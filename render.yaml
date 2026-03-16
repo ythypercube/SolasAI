@@ -20,7 +20,7 @@ services:
       - key: ALLOWED_ORIGINS
         value: https://turbowarp.org
       - key: REQUIRE_API_KEY
-        value: true
+        value: false
       - key: API_KEYS
         sync: false
       - key: MAX_MESSAGE_LENGTH
@@ -33,3 +33,15 @@ services:
         value: 30
       - key: HISTORY_LIMIT
         value: 8
+      - key: WEB_SEARCH_ENABLED
+        value: true
+      - key: WEB_RESULT_LIMIT
+        value: 3
+      - key: WEB_CONTEXT_MAX_CHARS
+        value: 1200
+      - key: WEB_SEARCH_TIMEOUT_MS
+        value: 4500
+      - key: PHRASING_KNOWLEDGE_ENABLED
+        value: true
+      - key: PHRASING_FALLBACK_ON_LOW_QUALITY
+        value: true
