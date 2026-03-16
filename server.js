@@ -86,6 +86,47 @@ function normalizeText(text) {
   return String(text || '').replace(/\s+/g, ' ').trim();
 }
 
+function isSafeMathExpression(text) {
+  return /^[0-9\s+\-*/().]+$/.test(text);
+}
+
+function parseMathQuery(userMessage) {
+  const raw = normalizeText(userMessage).toLowerCase();
+  if (!raw) return null;
+
+  const stripped = raw
+    .replace(/^ok[.,!?\s]*/i, '')
+    .replace(/^please[\s,]*/i, '')
+    .replace(/^(what is|calculate|solve|compute)\s+/i, '')
+    .replace(/[?]+$/g, '')
+    .replace(/times/g, '*')
+    .replace(/x/g, '*')
+    .replace(/plus/g, '+')
+    .replace(/minus/g, '-')
+    .replace(/divided by/g, '/');
+
+  const candidate = normalizeText(stripped);
+  if (!candidate || !isSafeMathExpression(candidate)) return null;
+  return candidate;
+}
+
+function solveMathQuery(userMessage) {
+  const expression = parseMathQuery(userMessage);
+  if (!expression) return null;
+
+  try {
+    const value = Function(`"use strict"; return (${expression});`)();
+    if (typeof value !== 'number' || !Number.isFinite(value)) return null;
+
+    const answer = Number.isInteger(value) ? String(value) : Number(value.toFixed(6)).toString();
+    return {
+      reply: `The answer is ${answer}.\n\nHow:\n1) Evaluate multiplication/division first.\n2) Then add/subtract.\n3) Result: ${answer}.`
+    };
+  } catch (_) {
+    return null;
+  }
+}
+
 function truncateText(text, maxChars) {
   const normalized = normalizeText(text);
   if (normalized.length <= maxChars) return normalized;
@@ -352,7 +393,8 @@ function wrapReplyText(text, preferredWidth = REPLY_WRAP_CHARS, maxOverflow = RE
 }
 
 function formatReplyForDisplay(reply, summary) {
-  const wrapped = wrapReplyText(reply);
+  const safeReply = normalizeText(reply) || 'I could not generate a response. Please ask again.';
+  const wrapped = wrapReplyText(safeReply);
   return attachReasoningSummary(wrapped, summary);
 }
 
@@ -541,6 +583,28 @@ async function generateChatReply(sessionId, userMessage) {
       sessionId,
       filtered: true,
       reasoningSummary: summary
+    };
+  }
+
+  const mathResult = solveMathQuery(userMessage);
+  if (mathResult) {
+    const summary = buildReasoningSummary({
+      userMessage,
+      blocked: false,
+      blockedReason: '',
+      provider: PROVIDER,
+      usedHistory: false,
+      usedRetrieval: false,
+      usedWebSearch: false
+    });
+    return {
+      reply: formatReplyForDisplay(mathResult.reply, summary),
+      provider: PROVIDER,
+      model: MODEL,
+      sessionId,
+      filtered: false,
+      reasoningSummary: summary,
+      webSources: []
     };
   }
 
