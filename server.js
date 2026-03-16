@@ -564,12 +564,15 @@ function factualKnowledgeReply(questionText) {
   if (!compact) return null;
 
   const factPatterns = [
-    [/^how many days (are )?in (a|one) week$/, 'There are 7 days in a week.'],
-    [/^how many hours (are )?in (a|one) day$/, 'There are 24 hours in a day.'],
-    [/^how many minutes (are )?in (a|one) hour$/, 'There are 60 minutes in an hour.'],
-    [/^how many seconds (are )?in (a|one) minute$/, 'There are 60 seconds in a minute.'],
-    [/^how many months (are )?in (a|one) year$/, 'There are 12 months in a year.'],
-    [/^how many weeks (are )?in (a|one) year$/, 'There are 52 weeks in a year (about 52.14).'],
+    [/^how many days (are )?in (a|an|one) week$/, 'There are 7 days in a week.'],
+    [/^how many hours (are )?in (a|an|one) day$/, 'There are 24 hours in a day.'],
+    [/^how many minutes (are )?in (a|an|one) hour$/, 'There are 60 minutes in an hour.'],
+    [/^how many seconds (are )?in (a|an|one) minute$/, 'There are 60 seconds in a minute.'],
+    [/^how many seconds (are )?in (a|an|one) hour$/, 'There are 3,600 seconds in an hour.'],
+    [/^how many minutes (are )?in (a|an|one) day$/, 'There are 1,440 minutes in a day.'],
+    [/^how many seconds (are )?in (a|an|one) day$/, 'There are 86,400 seconds in a day.'],
+    [/^how many months (are )?in (a|an|one) year$/, 'There are 12 months in a year.'],
+    [/^how many weeks (are )?in (a|an|one) year$/, 'There are 52 weeks in a year (about 52.14).'],
     [/^how many continents (are there)?$/, 'There are 7 continents.'],
     [/^what is the capital of france$/, 'The capital of France is Paris.'],
     [/^what is the capital of japan$/, 'The capital of Japan is Tokyo.'],
