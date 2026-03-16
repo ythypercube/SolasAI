@@ -54,6 +54,8 @@ const WEB_SEARCH_ENABLED = String(process.env.WEB_SEARCH_ENABLED || 'false').toL
 const WEB_SEARCH_TIMEOUT_MS = Number(process.env.WEB_SEARCH_TIMEOUT_MS || 4500);
 const WEB_CONTEXT_MAX_CHARS = Number(process.env.WEB_CONTEXT_MAX_CHARS || 1200);
 const WEB_RESULT_LIMIT = Number(process.env.WEB_RESULT_LIMIT || 3);
+const REPLY_WRAP_CHARS = Number(process.env.REPLY_WRAP_CHARS || 25);
+const REPLY_WRAP_OVERFLOW = Number(process.env.REPLY_WRAP_OVERFLOW || 20);
 const SOLASGPT_FORWARD_MAX_CHARS = Number(process.env.SOLASGPT_FORWARD_MAX_CHARS || 450);
 const PHRASING_KNOWLEDGE_ENABLED = String(process.env.PHRASING_KNOWLEDGE_ENABLED || 'true').toLowerCase() === 'true';
 const PHRASING_FALLBACK_ON_LOW_QUALITY = String(process.env.PHRASING_FALLBACK_ON_LOW_QUALITY || 'true').toLowerCase() === 'true';
@@ -309,6 +311,50 @@ function attachReasoningSummary(reply, summary) {
   return `${summary}\n\n${reply}`;
 }
 
+function wrapReplyText(text, preferredWidth = REPLY_WRAP_CHARS, maxOverflow = REPLY_WRAP_OVERFLOW) {
+  const raw = normalizeText(text);
+  if (!raw || preferredWidth <= 0) return raw;
+
+  const lines = [];
+  let remaining = raw;
+
+  while (remaining.length > preferredWidth) {
+    const minBreak = preferredWidth;
+    const maxBreak = Math.min(remaining.length, preferredWidth + maxOverflow);
+
+    let breakPos = -1;
+
+    for (let i = minBreak; i < maxBreak; i += 1) {
+      if (remaining[i] === ' ' && /[.!?;:,]/.test(remaining[i - 1] || '')) {
+        breakPos = i;
+      }
+    }
+
+    if (breakPos === -1) {
+      breakPos = remaining.lastIndexOf(' ', preferredWidth);
+    }
+    if (breakPos === -1) {
+      breakPos = remaining.indexOf(' ', preferredWidth);
+    }
+    if (breakPos === -1) {
+      break;
+    }
+
+    lines.push(remaining.slice(0, breakPos).trim());
+    remaining = remaining.slice(breakPos + 1).trim();
+  }
+
+  if (remaining) {
+    lines.push(remaining);
+  }
+  return lines.join('\n');
+}
+
+function formatReplyForDisplay(reply, summary) {
+  const wrapped = wrapReplyText(reply);
+  return attachReasoningSummary(wrapped, summary);
+}
+
 function looksLowQualityReply(reply) {
   const text = normalizeText(reply);
   if (!text) return true;
@@ -471,7 +517,7 @@ async function generateChatReply(sessionId, userMessage) {
       usedWebSearch: false
     });
     return {
-      reply: attachReasoningSummary(getSafetyBlockedReply(userMessage), summary),
+      reply: formatReplyForDisplay(getSafetyBlockedReply(userMessage), summary),
       provider: PROVIDER,
       model: MODEL,
       sessionId,
@@ -503,7 +549,7 @@ async function generateChatReply(sessionId, userMessage) {
         usedWebSearch
       });
       return {
-        reply: attachReasoningSummary(SAFETY_REFUSAL_TEXT, summary),
+        reply: formatReplyForDisplay(SAFETY_REFUSAL_TEXT, summary),
         provider: PROVIDER,
         model: MODEL,
         sessionId,
@@ -522,7 +568,7 @@ async function generateChatReply(sessionId, userMessage) {
       usedWebSearch
     });
     return {
-      reply: attachReasoningSummary(reply, summary),
+      reply: formatReplyForDisplay(reply, summary),
       provider: PROVIDER,
       model: MODEL,
       sessionId,
@@ -560,7 +606,7 @@ async function generateChatReply(sessionId, userMessage) {
       usedWebSearch
     });
     return {
-      reply: attachReasoningSummary(SAFETY_REFUSAL_TEXT, summary),
+      reply: formatReplyForDisplay(SAFETY_REFUSAL_TEXT, summary),
       provider: PROVIDER,
       model: MODEL,
       sessionId,
@@ -587,7 +633,7 @@ async function generateChatReply(sessionId, userMessage) {
   });
 
   return {
-    reply: attachReasoningSummary(finalReply, summary),
+    reply: formatReplyForDisplay(finalReply, summary),
     provider: PROVIDER,
     model: MODEL,
     sessionId,
@@ -678,6 +724,8 @@ app.get('/health', (req, res) => {
       webSearchEnabled: WEB_SEARCH_ENABLED,
       webResultLimit: WEB_RESULT_LIMIT,
       webContextMaxChars: WEB_CONTEXT_MAX_CHARS,
+      replyWrapChars: REPLY_WRAP_CHARS,
+      replyWrapOverflow: REPLY_WRAP_OVERFLOW,
       solasgptForwardMaxChars: SOLASGPT_FORWARD_MAX_CHARS,
       phrasingKnowledgeEnabled: PHRASING_KNOWLEDGE_ENABLED,
       phrasingFallbackOnLowQuality: PHRASING_FALLBACK_ON_LOW_QUALITY
