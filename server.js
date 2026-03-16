@@ -596,6 +596,29 @@ function factualKnowledgeReply(questionText) {
     }
   }
 
+  const quantityUnitConversionMatch = compact.match(/^how many ([a-z]+) (are )?in (\d+(?:\.\d+)?) ([a-z]+)$/);
+  if (quantityUnitConversionMatch) {
+    const askedUnit = normalizeUnit(quantityUnitConversionMatch[1]);
+    const quantity = Number(quantityUnitConversionMatch[3]);
+    const containerUnit = normalizeUnit(quantityUnitConversionMatch[4]);
+    const unitSeconds = {
+      second: 1,
+      minute: 60,
+      hour: 60 * 60,
+      day: 24 * 60 * 60,
+      week: 7 * 24 * 60 * 60,
+      year: 365 * 24 * 60 * 60
+    };
+
+    if (askedUnit && containerUnit && Number.isFinite(quantity) && quantity > 0) {
+      const ratio = (quantity * unitSeconds[containerUnit]) / unitSeconds[askedUnit];
+      const rounded = Math.abs(ratio - Math.round(ratio)) < 1e-9 ? Math.round(ratio) : Number(ratio.toFixed(2));
+      const formatted = Number(rounded).toLocaleString('en-US');
+      const askedLabel = rounded === 1 ? askedUnit : `${askedUnit}s`;
+      return `There are ${formatted} ${askedLabel} in ${quantity} ${containerUnit}${quantity === 1 ? '' : 's'}.`;
+    }
+  }
+
   const yearMatch = compact.match(/^how many years until (\d{4})$/);
   if (yearMatch) {
     const targetYear = Number(yearMatch[1]);
@@ -638,6 +661,22 @@ function factualKnowledgeReply(questionText) {
   return null;
 }
 
+function webGroundedFallbackReply(questionText, webContext) {
+  if (!webContext?.contextText) return null;
+  const text = normalizeText(questionText).toLowerCase();
+  if (!/^(what|who|when|where|which|how many|how much|why|is|are|does|do|can)\b/.test(text)) {
+    return null;
+  }
+
+  const firstSnippetMatch = webContext.contextText.match(/\(1\)\s*(.*?)\s*\[source:\s*([^\]]+)\]/i);
+  if (!firstSnippetMatch) return null;
+
+  const snippet = normalizeText(firstSnippetMatch[1]);
+  const source = normalizeText(firstSnippetMatch[2]);
+  if (!snippet) return null;
+  return `${snippet}${source ? ` (source: ${source})` : ''}`;
+}
+
 function phraseKnowledgeReply(userMessage, webContext) {
   const originalQuestion = extractOriginalQuestion(userMessage);
   const text = normalizeText(originalQuestion).toLowerCase();
@@ -646,12 +685,16 @@ function phraseKnowledgeReply(userMessage, webContext) {
   const sourceLine = hasWeb ? ` I checked web context from: ${webContext.sources.slice(0, 2).join(', ')}.` : '';
   const greetingPattern = /^(h+i+|he+y+|hello+|yo+|sup|what'?s\s+up)\b[\s!,.?]*$/i;
   const factual = factualKnowledgeReply(originalQuestion);
+  const webGrounded = webGroundedFallbackReply(originalQuestion, webContext);
 
   if (!text) {
     return 'I am ready. Ask me anything and I will answer clearly.';
   }
   if (factual) {
     return factual;
+  }
+  if (webGrounded) {
+    return webGrounded;
   }
   if (greetingPattern.test(text)) {
     return 'Hello! I am SolasGPT. Ask a question and I will give a clear, friendly answer.';
@@ -805,6 +848,28 @@ async function generateChatReply(sessionId, userMessage, baseUrl = '') {
     });
     return {
       reply: formatReplyForDisplay(mathResult.reply, summary),
+      provider: PROVIDER,
+      model: MODEL,
+      sessionId,
+      filtered: false,
+      reasoningSummary: summary,
+      webSources: []
+    };
+  }
+
+  const factualResult = factualKnowledgeReply(userMessage);
+  if (factualResult) {
+    const summary = buildReasoningSummary({
+      userMessage,
+      blocked: false,
+      blockedReason: '',
+      provider: PROVIDER,
+      usedHistory: false,
+      usedRetrieval: true,
+      usedWebSearch: false
+    });
+    return {
+      reply: formatReplyForDisplay(factualResult, summary),
       provider: PROVIDER,
       model: MODEL,
       sessionId,
