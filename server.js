@@ -392,9 +392,25 @@ function pickTopic(userMessage) {
   return text.length > 60 ? `${text.slice(0, 60).trim()}...` : text;
 }
 
+function extractOriginalQuestion(userMessage) {
+  const normalized = normalizeText(userMessage);
+  if (!normalized) return '';
+
+  const marker = /user question:\s*/i;
+  const match = marker.exec(normalized);
+  if (!match) return normalized;
+
+  const start = match.index + match[0].length;
+  const tail = normalized.slice(start);
+  const stop = /\s+answer concisely/i.exec(tail);
+  const extracted = stop ? tail.slice(0, stop.index).trim() : tail.trim();
+  return extracted || normalized;
+}
+
 function phraseKnowledgeReply(userMessage, webContext) {
-  const text = normalizeText(userMessage).toLowerCase();
-  const topic = pickTopic(userMessage);
+  const originalQuestion = extractOriginalQuestion(userMessage);
+  const text = normalizeText(originalQuestion).toLowerCase();
+  const topic = pickTopic(originalQuestion);
   const hasWeb = Boolean(webContext?.sources?.length);
   const sourceLine = hasWeb ? ` I checked web context from: ${webContext.sources.slice(0, 2).join(', ')}.` : '';
 
