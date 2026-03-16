@@ -1070,6 +1070,20 @@ async function callSolasGPT(sessionId, userMessage) {
   return normalizeText(text) || 'I could not generate a response.';
 }
 
+async function callSolasFeedback(payload) {
+  const response = await fetch(`${SOLASGPT_URL}/feedback`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload)
+  });
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`SolasGPT feedback error: ${response.status} ${errorText}`);
+  }
+  const data = await response.json().catch(() => ({}));
+  return data;
+}
+
 async function callOllama(messages) {
   const response = await fetch(`${OLLAMA_BASE_URL}/api/chat`, {
     method: 'POST',
@@ -1347,6 +1361,40 @@ app.post('/reset', checkApiKey, checkRateLimit, async (req, res) => {
     } catch (_) { /* ignore if inference server is down */ }
   }
   res.json({ ok: true, sessionId });
+});
+
+app.post('/feedback', checkApiKey, checkRateLimit, async (req, res) => {
+  try {
+    const sessionId = normalizeText(req.body?.sessionId || 'default');
+    const message = normalizeText(req.body?.message || '');
+    const reply = normalizeText(req.body?.reply || '');
+    const rating = normalizeText(req.body?.rating || '');
+    const improvement = normalizeText(req.body?.improvement || '');
+
+    const sessionError = validateSessionId(sessionId);
+    if (sessionError) {
+      return res.status(400).json({ ok: false, error: sessionError });
+    }
+
+    if (!rating) {
+      return res.status(400).json({ ok: false, error: 'rating is required' });
+    }
+
+    if (PROVIDER === 'solasgpt') {
+      try {
+        await callSolasFeedback({ sessionId, message, reply, rating, improvement });
+      } catch (_) {
+        // best-effort forwarding, keep API success for UI flow
+      }
+    }
+
+    return res.json({ ok: true, sessionId, rating });
+  } catch (error) {
+    return res.status(500).json({
+      ok: false,
+      error: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
 });
 
 app.listen(PORT, () => {

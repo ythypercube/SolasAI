@@ -668,6 +668,43 @@ def reset():
     return jsonify({'ok': True, 'sessionId': session_id})
 
 
+@app.post('/feedback')
+def feedback():
+    data = request.get_json(silent=True) or {}
+    session_id = str(data.get('sessionId', 'default')).strip() or 'default'
+    user_message = str(data.get('message', '')).strip()
+    assistant_reply = str(data.get('reply', '')).strip()
+    rating = normalize_message(str(data.get('rating', '')).strip())
+    improvement = str(data.get('improvement', '')).strip()
+
+    if not rating:
+        return jsonify({'ok': False, 'error': 'rating is required'}), 400
+
+    is_positive = rating in {'✓', '✅', 'tick', 'good', '1', 'yes', 'y'}
+    is_negative = rating in {'✗', '❌', 'x', 'bad', '0', 'no', 'n'}
+    needs_improvement = is_negative or (not is_positive)
+
+    event = {
+        'ts': datetime.utcnow().isoformat(timespec='seconds') + 'Z',
+        'sessionId': session_id,
+        'user': user_message,
+        'assistant': assistant_reply,
+        'rating': rating,
+        'improvement': improvement,
+        'needsImprovement': needs_improvement,
+        'reason': 'user-negative-feedback' if is_negative else ('user-positive-feedback' if is_positive else 'user-feedback')
+    }
+
+    try:
+        os.makedirs(os.path.dirname(FEEDBACK_LOG), exist_ok=True)
+        with open(FEEDBACK_LOG, 'a', encoding='utf-8') as handle:
+            handle.write(json.dumps(event, ensure_ascii=False) + '\n')
+    except Exception:
+        return jsonify({'ok': False, 'error': 'failed to write feedback'}), 500
+
+    return jsonify({'ok': True, 'sessionId': session_id, 'rating': rating, 'needsImprovement': needs_improvement})
+
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--port', type=int, default=int(os.getenv('PORT', '8788')))
