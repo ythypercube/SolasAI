@@ -55,7 +55,7 @@ const WEB_SEARCH_ENABLED = String(process.env.WEB_SEARCH_ENABLED || 'false').toL
 const WEB_SEARCH_TIMEOUT_MS = Number(process.env.WEB_SEARCH_TIMEOUT_MS || 4500);
 const WEB_CONTEXT_MAX_CHARS = Number(process.env.WEB_CONTEXT_MAX_CHARS || 1200);
 const WEB_RESULT_LIMIT = Number(process.env.WEB_RESULT_LIMIT || 3);
-const REPLY_WRAP_CHARS = Number(process.env.REPLY_WRAP_CHARS || 25);
+const REPLY_WRAP_CHARS = Number(process.env.REPLY_WRAP_CHARS || 35);
 const REPLY_WRAP_OVERFLOW = Number(process.env.REPLY_WRAP_OVERFLOW || 20);
 const SOLASGPT_FORWARD_MAX_CHARS = Number(process.env.SOLASGPT_FORWARD_MAX_CHARS || 450);
 const PHRASING_KNOWLEDGE_ENABLED = String(process.env.PHRASING_KNOWLEDGE_ENABLED || 'true').toLowerCase() === 'true';

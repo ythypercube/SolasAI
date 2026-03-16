@@ -41,6 +41,8 @@ services:
         value: 1200
       - key: WEB_SEARCH_TIMEOUT_MS
         value: 4500
+      - key: REPLY_WRAP_CHARS
+        value: 35
       - key: PHRASING_KNOWLEDGE_ENABLED
         value: true
       - key: PHRASING_FALLBACK_ON_LOW_QUALITY
