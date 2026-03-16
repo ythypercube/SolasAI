@@ -30,6 +30,7 @@ const SOLASGPT_URL = process.env.SOLASGPT_URL || 'http://127.0.0.1:8788';
 const MODEL = process.env.MODEL || (PROVIDER === 'ollama' ? 'llama3.1:8b' : PROVIDER === 'solasgpt' ? 'solasgpt' : 'gpt-4o-mini');
 const DEFAULT_SYSTEM_PROMPT = [
   'You are SolasGPT, a helpful and respectful AI assistant inside a Scratch/TurboWarp project.',
+  'You are especially good at Scratch and TurboWarp coding help, including variables, lists, high scores, broadcasts, clones, movement, timers, and simple game logic.',
   'Rules you must follow:',
   '1) Do not be negative, insulting, or abusive toward users.',
   '2) Before giving instructions, ensure guidance is valid, safe, and non-hazardous.',
@@ -60,6 +61,7 @@ const SOLASGPT_FORWARD_MAX_CHARS = Number(process.env.SOLASGPT_FORWARD_MAX_CHARS
 const PHRASING_KNOWLEDGE_ENABLED = String(process.env.PHRASING_KNOWLEDGE_ENABLED || 'true').toLowerCase() === 'true';
 const PHRASING_FALLBACK_ON_LOW_QUALITY = String(process.env.PHRASING_FALLBACK_ON_LOW_QUALITY || 'true').toLowerCase() === 'true';
 const UPSTREAM_FALLBACK_ENABLED = String(process.env.UPSTREAM_FALLBACK_ENABLED || 'true').toLowerCase() === 'true';
+const GENERATED_IMAGE_SIZE = Number(process.env.GENERATED_IMAGE_SIZE || 480);
 const API_KEYS = (process.env.API_KEYS || '')
   .split(',')
   .map((value) => value.trim())
@@ -84,6 +86,23 @@ function trimHistory(messages, maxTurns) {
 
 function normalizeText(text) {
   return String(text || '').replace(/\s+/g, ' ').trim();
+}
+
+function escapeSvgText(text) {
+  return String(text || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+function hashString(text) {
+  let hash = 0;
+  for (let i = 0; i < text.length; i += 1) {
+    hash = ((hash << 5) - hash + text.charCodeAt(i)) | 0;
+  }
+  return Math.abs(hash);
 }
 
 function isSafeMathExpression(text) {
@@ -125,6 +144,81 @@ function solveMathQuery(userMessage) {
   } catch (_) {
     return null;
   }
+}
+
+function isImageRequest(userMessage) {
+  const text = normalizeText(userMessage).toLowerCase();
+  return /\b(draw|generate image|make an image|create an image|make a sprite|create a sprite|draw a)\b/.test(text);
+}
+
+function extractImagePrompt(userMessage) {
+  const raw = normalizeText(userMessage);
+  return raw
+    .replace(/^(please\s+)?(draw|generate image of|generate image|make an image of|make an image|create an image of|create an image|make a sprite of|make a sprite|create a sprite of|create a sprite|draw a)\s+/i, '')
+    .trim() || 'creative scene';
+}
+
+function makeImageUrl(baseUrl, prompt) {
+  const url = new URL('/generated-image.svg', baseUrl);
+  url.searchParams.set('prompt', prompt);
+  return url.toString();
+}
+
+function imageReply(userMessage, baseUrl) {
+  if (!baseUrl || !isImageRequest(userMessage)) return null;
+  const prompt = extractImagePrompt(userMessage);
+  const imageUrl = makeImageUrl(baseUrl, prompt);
+  return {
+    reply: `IMAGE_URL:${imageUrl}||MESSAGE:I created a simple sprite-style image for ${prompt}.`
+  };
+}
+
+function scratchCodingReply(userMessage) {
+  const text = normalizeText(userMessage).toLowerCase();
+  if (!text) return null;
+
+  if (/\b(high ?score|hiscore|scoreboard)\b/.test(text)) {
+    return {
+      reply: [
+        'To make a high score in Scratch:',
+        '1) Create variables `score` and `highscore`.',
+        '2) When the game starts, set `score` to 0.',
+        '3) Whenever score changes, check: if `score > highscore`, then set `highscore` to `score`.',
+        '4) Show `highscore` on the stage or save it with cloud data if needed.'
+      ].join('\n')
+    };
+  }
+
+  if (/\b(broadcast|message block|send message)\b/.test(text) && /\b(scratch|turbowarp)\b/.test(text)) {
+    return {
+      reply: [
+        'Use broadcasts in Scratch to coordinate sprites:',
+        '1) Send a broadcast like `start game`.',
+        '2) In another sprite, use `when I receive [start game]`.',
+        '3) Put the reaction code under that event block.'
+      ].join('\n')
+    };
+  }
+
+  if (/\b(clone|clones)\b/.test(text) && /\b(scratch|turbowarp)\b/.test(text)) {
+    return {
+      reply: [
+        'To use clones in Scratch:',
+        '1) Put setup code in the original sprite.',
+        '2) Use `create clone of myself`.',
+        '3) Put clone behavior under `when I start as a clone`.',
+        '4) Delete the clone when it is no longer needed.'
+      ].join('\n')
+    };
+  }
+
+  if (/\b(scratch|turbowarp)\b/.test(text)) {
+    return {
+      reply: 'I can help with Scratch and TurboWarp blocks, variables, lists, high scores, broadcasts, clones, and game logic. Ask a specific coding question and I will explain the steps.'
+    };
+  }
+
+  return null;
 }
 
 function truncateText(text, maxChars) {
@@ -393,6 +487,9 @@ function wrapReplyText(text, preferredWidth = REPLY_WRAP_CHARS, maxOverflow = RE
 }
 
 function formatReplyForDisplay(reply, summary) {
+  if (String(reply || '').startsWith('IMAGE_URL:')) {
+    return reply;
+  }
   const safeReply = normalizeText(reply) || 'I could not generate a response. Please ask again.';
   const wrapped = wrapReplyText(safeReply);
   return attachReasoningSummary(wrapped, summary);
@@ -565,7 +662,7 @@ setInterval(() => {
   }
 }, Math.max(15_000, RATE_LIMIT_WINDOW_MS)).unref();
 
-async function generateChatReply(sessionId, userMessage) {
+async function generateChatReply(sessionId, userMessage, baseUrl = '') {
   if (ENABLE_CONTENT_FILTER && isUnsafeInput(userMessage)) {
     const summary = buildReasoningSummary({
       userMessage,
@@ -586,6 +683,19 @@ async function generateChatReply(sessionId, userMessage) {
     };
   }
 
+  const imageResult = imageReply(userMessage, baseUrl);
+  if (imageResult) {
+    return {
+      reply: imageResult.reply,
+      provider: PROVIDER,
+      model: MODEL,
+      sessionId,
+      filtered: false,
+      reasoningSummary: '',
+      webSources: []
+    };
+  }
+
   const mathResult = solveMathQuery(userMessage);
   if (mathResult) {
     const summary = buildReasoningSummary({
@@ -599,6 +709,28 @@ async function generateChatReply(sessionId, userMessage) {
     });
     return {
       reply: formatReplyForDisplay(mathResult.reply, summary),
+      provider: PROVIDER,
+      model: MODEL,
+      sessionId,
+      filtered: false,
+      reasoningSummary: summary,
+      webSources: []
+    };
+  }
+
+  const scratchResult = scratchCodingReply(userMessage);
+  if (scratchResult) {
+    const summary = buildReasoningSummary({
+      userMessage,
+      blocked: false,
+      blockedReason: '',
+      provider: PROVIDER,
+      usedHistory: false,
+      usedRetrieval: false,
+      usedWebSearch: false
+    });
+    return {
+      reply: formatReplyForDisplay(scratchResult.reply, summary),
       provider: PROVIDER,
       model: MODEL,
       sessionId,
@@ -820,10 +952,37 @@ app.get('/health', (req, res) => {
       replyWrapOverflow: REPLY_WRAP_OVERFLOW,
       solasgptForwardMaxChars: SOLASGPT_FORWARD_MAX_CHARS,
       upstreamFallbackEnabled: UPSTREAM_FALLBACK_ENABLED,
+      generatedImageSize: GENERATED_IMAGE_SIZE,
       phrasingKnowledgeEnabled: PHRASING_KNOWLEDGE_ENABLED,
       phrasingFallbackOnLowQuality: PHRASING_FALLBACK_ON_LOW_QUALITY
     }
   });
+});
+
+app.get('/generated-image.svg', (req, res) => {
+  const prompt = normalizeText(req.query?.prompt || 'creative scene') || 'creative scene';
+  const safePrompt = escapeSvgText(prompt);
+  const size = Math.max(128, Math.min(1024, GENERATED_IMAGE_SIZE));
+  const hash = hashString(prompt);
+  const palette = [
+    ['#1e1e2e', '#89b4fa', '#a6e3a1'],
+    ['#11111b', '#f9e2af', '#f38ba8'],
+    ['#0f172a', '#38bdf8', '#c4b5fd'],
+    ['#1f2937', '#34d399', '#fbbf24']
+  ][hash % 4];
+  const cx = 90 + (hash % 220);
+  const cy = 110 + (hash % 120);
+  const radius = 38 + (hash % 44);
+  const svg = `<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 480 360">
+  <rect width="480" height="360" rx="24" fill="${palette[0]}"/>
+  <circle cx="${cx}" cy="${cy}" r="${radius}" fill="${palette[1]}" opacity="0.95"/>
+  <rect x="250" y="70" width="130" height="130" rx="24" fill="${palette[2]}" opacity="0.9"/>
+  <path d="M50 280 C120 220, 180 220, 240 280 S360 340, 430 280" fill="none" stroke="${palette[1]}" stroke-width="14" stroke-linecap="round"/>
+  <text x="240" y="250" font-family="Arial, sans-serif" font-size="28" font-weight="bold" fill="#ffffff" text-anchor="middle">AI Sprite Art</text>
+  <text x="240" y="292" font-family="Arial, sans-serif" font-size="20" fill="#e5e7eb" text-anchor="middle">${safePrompt.slice(0, 36)}</text>
+</svg>`;
+  res.type('image/svg+xml').send(svg);
 });
 
 app.get('/chat-plain', (req, res) => {
@@ -848,7 +1007,8 @@ app.post('/chat', checkApiKey, checkRateLimit, async (req, res) => {
       return res.status(400).json({ ok: false, error: messageError });
     }
 
-    const result = await generateChatReply(sessionId, userMessage);
+    const baseUrl = `${req.protocol}://${req.get('host')}`;
+    const result = await generateChatReply(sessionId, userMessage, baseUrl);
 
     return res.json({
       ok: true,
@@ -877,7 +1037,8 @@ app.post('/chat-plain', checkApiKey, checkRateLimit, async (req, res) => {
       return res.status(400).type('text/plain').send(`ERROR: ${messageError}`);
     }
 
-    const result = await generateChatReply(sessionId, userMessage);
+    const baseUrl = `${req.protocol}://${req.get('host')}`;
+    const result = await generateChatReply(sessionId, userMessage, baseUrl);
     return res.type('text/plain').send(result.reply);
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error';
