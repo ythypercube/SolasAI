@@ -59,6 +59,7 @@ const REPLY_WRAP_OVERFLOW = Number(process.env.REPLY_WRAP_OVERFLOW || 20);
 const SOLASGPT_FORWARD_MAX_CHARS = Number(process.env.SOLASGPT_FORWARD_MAX_CHARS || 450);
 const PHRASING_KNOWLEDGE_ENABLED = String(process.env.PHRASING_KNOWLEDGE_ENABLED || 'true').toLowerCase() === 'true';
 const PHRASING_FALLBACK_ON_LOW_QUALITY = String(process.env.PHRASING_FALLBACK_ON_LOW_QUALITY || 'true').toLowerCase() === 'true';
+const UPSTREAM_FALLBACK_ENABLED = String(process.env.UPSTREAM_FALLBACK_ENABLED || 'true').toLowerCase() === 'true';
 const API_KEYS = (process.env.API_KEYS || '')
   .split(',')
   .map((value) => value.trim())
@@ -533,7 +534,17 @@ async function generateChatReply(sessionId, userMessage) {
   // SolasGPT manages its own session history internally
   if (PROVIDER === 'solasgpt') {
     const forwardedMessage = truncateText(userMessageForModel, SOLASGPT_FORWARD_MAX_CHARS);
-    const rawReply = await callSolasGPT(sessionId, forwardedMessage);
+
+    let rawReply;
+    try {
+      rawReply = await callSolasGPT(sessionId, forwardedMessage);
+    } catch (error) {
+      if (!UPSTREAM_FALLBACK_ENABLED) {
+        throw error;
+      }
+      rawReply = phraseKnowledgeReply(userMessage, webContext);
+    }
+
     const usePhrasingFallback =
       PHRASING_KNOWLEDGE_ENABLED && PHRASING_FALLBACK_ON_LOW_QUALITY && looksLowQualityReply(rawReply);
     const reply = usePhrasingFallback ? phraseKnowledgeReply(userMessage, webContext) : rawReply;
@@ -727,10 +738,18 @@ app.get('/health', (req, res) => {
       replyWrapChars: REPLY_WRAP_CHARS,
       replyWrapOverflow: REPLY_WRAP_OVERFLOW,
       solasgptForwardMaxChars: SOLASGPT_FORWARD_MAX_CHARS,
+      upstreamFallbackEnabled: UPSTREAM_FALLBACK_ENABLED,
       phrasingKnowledgeEnabled: PHRASING_KNOWLEDGE_ENABLED,
       phrasingFallbackOnLowQuality: PHRASING_FALLBACK_ON_LOW_QUALITY
     }
   });
+});
+
+app.get('/chat-plain', (req, res) => {
+  res
+    .status(405)
+    .type('text/plain')
+    .send('Use POST /chat-plain with JSON body: {"sessionId":"...","message":"..."}');
 });
 
 app.post('/chat', checkApiKey, checkRateLimit, async (req, res) => {
