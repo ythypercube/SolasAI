@@ -272,6 +272,41 @@ def factual_reply(user_message: str) -> str | None:
     if not compact:
         return None
 
+    def normalize_unit(raw_unit: str) -> str | None:
+        unit = raw_unit.lower()
+        if unit in {'second', 'seconds', 'sec', 'secs'}:
+            return 'second'
+        if unit in {'minute', 'minutes', 'min', 'mins'}:
+            return 'minute'
+        if unit in {'hour', 'hours', 'hr', 'hrs'}:
+            return 'hour'
+        if unit in {'day', 'days'}:
+            return 'day'
+        if unit in {'week', 'weeks'}:
+            return 'week'
+        if unit in {'year', 'years'}:
+            return 'year'
+        return None
+
+    unit_match = re.fullmatch(r"how many ([a-z]+) (are )?in (a|an|one) ([a-z]+)", compact)
+    if unit_match:
+        asked_unit = normalize_unit(unit_match.group(1))
+        container_unit = normalize_unit(unit_match.group(4))
+        unit_seconds = {
+            'second': 1,
+            'minute': 60,
+            'hour': 60 * 60,
+            'day': 24 * 60 * 60,
+            'week': 7 * 24 * 60 * 60,
+            'year': 365 * 24 * 60 * 60,
+        }
+        if asked_unit and container_unit:
+            ratio = unit_seconds[container_unit] / unit_seconds[asked_unit]
+            rounded = int(round(ratio)) if abs(ratio - round(ratio)) < 1e-9 else round(ratio, 2)
+            formatted = f"{rounded:,}" if isinstance(rounded, int) else f"{rounded:,.2f}".rstrip('0').rstrip('.')
+            asked_label = asked_unit if rounded == 1 else f"{asked_unit}s"
+            return f"There are {formatted} {asked_label} in a {container_unit}."
+
     year_match = re.fullmatch(r"how many years until (\d{4})", compact)
     if year_match:
         target_year = int(year_match.group(1))

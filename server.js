@@ -563,6 +563,39 @@ function factualKnowledgeReply(questionText) {
   const compact = text.replace(/[^a-z0-9\s']/g, '').trim();
   if (!compact) return null;
 
+  const normalizeUnit = (rawUnit) => {
+    const unit = String(rawUnit || '').toLowerCase();
+    if (['second', 'seconds', 'sec', 'secs'].includes(unit)) return 'second';
+    if (['minute', 'minutes', 'min', 'mins'].includes(unit)) return 'minute';
+    if (['hour', 'hours', 'hr', 'hrs'].includes(unit)) return 'hour';
+    if (['day', 'days'].includes(unit)) return 'day';
+    if (['week', 'weeks'].includes(unit)) return 'week';
+    if (['year', 'years'].includes(unit)) return 'year';
+    return null;
+  };
+
+  const unitConversionMatch = compact.match(/^how many ([a-z]+) (are )?in (a|an|one) ([a-z]+)$/);
+  if (unitConversionMatch) {
+    const askedUnit = normalizeUnit(unitConversionMatch[1]);
+    const containerUnit = normalizeUnit(unitConversionMatch[4]);
+    const unitSeconds = {
+      second: 1,
+      minute: 60,
+      hour: 60 * 60,
+      day: 24 * 60 * 60,
+      week: 7 * 24 * 60 * 60,
+      year: 365 * 24 * 60 * 60
+    };
+
+    if (askedUnit && containerUnit && unitSeconds[askedUnit] && unitSeconds[containerUnit]) {
+      const ratio = unitSeconds[containerUnit] / unitSeconds[askedUnit];
+      const rounded = Math.abs(ratio - Math.round(ratio)) < 1e-9 ? Math.round(ratio) : Number(ratio.toFixed(2));
+      const formatted = Number(rounded).toLocaleString('en-US');
+      const askedLabel = rounded === 1 ? askedUnit : `${askedUnit}s`;
+      return `There are ${formatted} ${askedLabel} in a ${containerUnit}.`;
+    }
+  }
+
   const yearMatch = compact.match(/^how many years until (\d{4})$/);
   if (yearMatch) {
     const targetYear = Number(yearMatch[1]);
