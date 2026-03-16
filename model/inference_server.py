@@ -520,6 +520,25 @@ def looks_bad(text: str) -> bool:
     return False
 
 
+def assume_high_probability_reply(user_message: str, best_answer: str | None = None) -> str:
+    if best_answer:
+        return clean_reply(best_answer)
+
+    text = normalize_message(user_message)
+    compact = re.sub(r'\s+', ' ', text).strip()
+    if not compact:
+        return 'I will assume you want a clear answer. Here is the best approach: define your goal, provide key details, and I will give a direct solution.'
+
+    topic = re.sub(r'^(what|who|when|where|which|why|how|can|could|would|should|is|are|do|does|did)\b\s*', '', compact, flags=re.IGNORECASE).strip(' ?.!')
+    if not topic:
+        topic = compact[:60]
+
+    return clean_reply(
+        f'I will assume the most likely intent is practical help with {topic}. '
+        'Start by defining the goal, listing the inputs, doing one concrete step, and checking the result.'
+    )
+
+
 def generate_reply(prompt: str, max_new_tokens: int = 150, temperature: float = 0.8,
                    top_k: int = 40) -> str:
     assert model is not None
@@ -548,7 +567,7 @@ def answer_message(user_message: str, history: list[str]) -> str:
     if looks_bad(reply) and best_answer and score >= 0.42:
         return clean_reply(best_answer)
     if looks_bad(reply):
-        return "I am still learning. Try asking a short factual question."
+        return assume_high_probability_reply(user_message, best_answer)
     return clean_reply(reply)
 
 

@@ -715,7 +715,7 @@ function phraseKnowledgeReply(userMessage, webContext) {
     return `I can help with ${topic}. Tell me your exact goal and I will give a concise step-by-step answer.`;
   }
 
-  return `Got it. Ask a specific question and I will give a direct answer.${sourceLine}`;
+  return `I will assume the most likely intent is that you want practical help with ${topic}. Start with this approach: define the goal clearly, gather the key inputs, do one concrete step, then verify the result and refine.${sourceLine}`;
 }
 
 function getClientIp(req) {
