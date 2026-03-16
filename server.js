@@ -558,6 +558,36 @@ function extractOriginalQuestion(userMessage) {
   return extracted || normalized;
 }
 
+function factualKnowledgeReply(questionText) {
+  const text = normalizeText(questionText).toLowerCase();
+  const compact = text.replace(/[^a-z0-9\s']/g, '').trim();
+  if (!compact) return null;
+
+  const factPatterns = [
+    [/^how many days (are )?in (a|one) week$/, 'There are 7 days in a week.'],
+    [/^how many hours (are )?in (a|one) day$/, 'There are 24 hours in a day.'],
+    [/^how many minutes (are )?in (a|one) hour$/, 'There are 60 minutes in an hour.'],
+    [/^how many seconds (are )?in (a|one) minute$/, 'There are 60 seconds in a minute.'],
+    [/^how many months (are )?in (a|one) year$/, 'There are 12 months in a year.'],
+    [/^how many weeks (are )?in (a|one) year$/, 'There are 52 weeks in a year (about 52.14).'],
+    [/^how many continents (are there)?$/, 'There are 7 continents.'],
+    [/^what is the capital of france$/, 'The capital of France is Paris.'],
+    [/^what is the capital of japan$/, 'The capital of Japan is Tokyo.'],
+    [/^what is the capital of the united states$/, 'The capital of the United States is Washington, D.C.'],
+    [/^which planet is known as the red planet$/, 'Mars is known as the Red Planet.'],
+    [/^what is h2o$/, 'H2O is water.'],
+    [/^what is the largest planet in our solar system$/, 'Jupiter is the largest planet in our solar system.'],
+    [/^how many letters are in the english alphabet$/, 'There are 26 letters in the English alphabet.']
+  ];
+
+  for (const [pattern, answer] of factPatterns) {
+    if (pattern.test(compact)) {
+      return answer;
+    }
+  }
+  return null;
+}
+
 function phraseKnowledgeReply(userMessage, webContext) {
   const originalQuestion = extractOriginalQuestion(userMessage);
   const text = normalizeText(originalQuestion).toLowerCase();
@@ -565,9 +595,13 @@ function phraseKnowledgeReply(userMessage, webContext) {
   const hasWeb = Boolean(webContext?.sources?.length);
   const sourceLine = hasWeb ? ` I checked web context from: ${webContext.sources.slice(0, 2).join(', ')}.` : '';
   const greetingPattern = /^(h+i+|he+y+|hello+|yo+|sup|what'?s\s+up)\b[\s!,.?]*$/i;
+  const factual = factualKnowledgeReply(originalQuestion);
 
   if (!text) {
     return 'I am ready. Ask me anything and I will answer clearly.';
+  }
+  if (factual) {
+    return factual;
   }
   if (greetingPattern.test(text)) {
     return 'Hello! I am SolasGPT. Ask a question and I will give a clear, friendly answer.';
@@ -578,7 +612,7 @@ function phraseKnowledgeReply(userMessage, webContext) {
   if (text.includes('explain')) {
     return `Sure — here is a simple explanation of ${topic}: it means understanding the main idea, then breaking it into small practical steps.${sourceLine}`;
   }
-  if (text.startsWith('how ') || text.includes('how do')) {
+  if (text.startsWith('how do') || text.startsWith('how can') || text.startsWith('how to') || text.includes('how do')) {
     return `Here is a safe way to approach ${topic}: define the goal, gather the right information, do one step at a time, then verify the result.${sourceLine}`;
   }
   if (text.includes('why ')) {
