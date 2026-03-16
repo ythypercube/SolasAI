@@ -159,10 +159,15 @@ function isImageRequest(userMessage) {
 
 function extractImagePrompt(userMessage) {
   const raw = normalizeText(userMessage);
-  return raw
-    // Strip leading verb phrase: "please generate a", "draw a", "make me a", etc.
-    .replace(/^(please\s+)?(generate|make|create|draw|show\s+me)\s+(a\s+|an\s+|me\s+a\s+|me\s+an\s+)?/i, '')
-    .trim() || 'creative scene';
+  // Find the verb anywhere in the message, handles "hello. Can you make a green cat sprite"
+  const verbMatch = /\b(generate|make|create|draw|show\s+me)\b/i.exec(raw);
+  if (verbMatch) {
+    const fromVerb = raw.slice(verbMatch.index);
+    return fromVerb
+      .replace(/^(generate|make|create|draw|show\s+me)\s+(a\s+|an\s+|me\s+a\s+|me\s+an\s+|us\s+a\s+)?/i, '')
+      .trim() || 'creative scene';
+  }
+  return raw.trim() || 'creative scene';
 }
 
 function makeImageUrl(baseUrl, prompt) {
@@ -966,29 +971,151 @@ app.get('/health', (req, res) => {
   });
 });
 
+function buildSubjectSvg(prompt) {
+  const text = prompt.toLowerCase();
+  const colorMap = [
+    ['red', '#e74c3c'], ['orange', '#e67e22'], ['yellow', '#f1c40f'],
+    ['green', '#2ecc71'], ['blue', '#3498db'], ['purple', '#9b59b6'],
+    ['pink', '#e91ea0'], ['white', '#ecf0f1'], ['black', '#555566'],
+    ['brown', '#8d5524'], ['cyan', '#1abc9c'], ['gold', '#f39c12'],
+    ['grey', '#95a5a6'], ['gray', '#95a5a6']
+  ];
+  let c = '#3498db';
+  for (const [name, hex] of colorMap) {
+    if (text.includes(name)) { c = hex; break; }
+  }
+  const bg = '#1a1a2e';
+  const label = escapeSvgText(prompt.slice(0, 42));
+  let body = '';
+
+  if (/\bcat\b/.test(text)) {
+    body = `
+  <ellipse cx="240" cy="295" rx="85" ry="58" fill="${c}"/>
+  <circle cx="240" cy="170" r="72" fill="${c}"/>
+  <polygon points="178,122 158,64 218,110" fill="${c}"/>
+  <polygon points="302,122 322,64 262,110" fill="${c}"/>
+  <polygon points="181,117 167,78 212,110" fill="#f9a8d4" opacity="0.75"/>
+  <polygon points="299,117 313,78 268,110" fill="#f9a8d4" opacity="0.75"/>
+  <ellipse cx="212" cy="162" rx="13" ry="15" fill="#111"/>
+  <circle cx="216" cy="157" r="4" fill="white"/>
+  <ellipse cx="268" cy="162" rx="13" ry="15" fill="#111"/>
+  <circle cx="272" cy="157" r="4" fill="white"/>
+  <polygon points="240,182 234,191 246,191" fill="#f9a8d4"/>
+  <path d="M234,192 Q240,198 246,192" fill="none" stroke="#555" stroke-width="2"/>
+  <line x1="166" y1="181" x2="226" y2="184" stroke="#ccc" stroke-width="2" opacity="0.8"/>
+  <line x1="164" y1="191" x2="226" y2="188" stroke="#ccc" stroke-width="2" opacity="0.6"/>
+  <line x1="314" y1="181" x2="254" y2="184" stroke="#ccc" stroke-width="2" opacity="0.8"/>
+  <line x1="316" y1="191" x2="254" y2="188" stroke="#ccc" stroke-width="2" opacity="0.6"/>
+  <path d="M326,290 C366,252 390,210 354,182" fill="none" stroke="${c}" stroke-width="16" stroke-linecap="round"/>`;
+  } else if (/\bdog\b/.test(text)) {
+    body = `
+  <ellipse cx="240" cy="292" rx="92" ry="60" fill="${c}"/>
+  <circle cx="240" cy="168" r="72" fill="${c}"/>
+  <ellipse cx="170" cy="170" rx="28" ry="52" fill="${c}" opacity="0.9"/>
+  <ellipse cx="310" cy="170" rx="28" ry="52" fill="${c}" opacity="0.9"/>
+  <ellipse cx="240" cy="193" rx="30" ry="20" fill="#c9985e" opacity="0.65"/>
+  <circle cx="212" cy="158" r="13" fill="#111"/>
+  <circle cx="216" cy="154" r="4" fill="white"/>
+  <circle cx="268" cy="158" r="13" fill="#111"/>
+  <circle cx="272" cy="154" r="4" fill="white"/>
+  <ellipse cx="240" cy="185" rx="12" ry="9" fill="#111"/>
+  <path d="M334,272 C370,242 382,202 360,180" fill="none" stroke="${c}" stroke-width="14" stroke-linecap="round"/>`;
+  } else if (/\bstar\b/.test(text)) {
+    body = `
+  <polygon points="240,48 266,160 378,160 288,228 316,340 240,270 164,340 192,228 102,160 214,160" fill="${c}"/>
+  <circle cx="208" cy="118" r="16" fill="white" opacity="0.28"/>`;
+  } else if (/\bsun\b/.test(text)) {
+    const sc = c === '#3498db' ? '#f1c40f' : c;
+    body = `
+  <line x1="240" y1="18" x2="240" y2="78" stroke="${sc}" stroke-width="14" stroke-linecap="round"/>
+  <line x1="240" y1="282" x2="240" y2="342" stroke="${sc}" stroke-width="14" stroke-linecap="round"/>
+  <line x1="58" y1="180" x2="118" y2="180" stroke="${sc}" stroke-width="14" stroke-linecap="round"/>
+  <line x1="362" y1="180" x2="422" y2="180" stroke="${sc}" stroke-width="14" stroke-linecap="round"/>
+  <line x1="98" y1="58" x2="141" y2="101" stroke="${sc}" stroke-width="14" stroke-linecap="round"/>
+  <line x1="339" y1="259" x2="382" y2="302" stroke="${sc}" stroke-width="14" stroke-linecap="round"/>
+  <line x1="382" y1="58" x2="339" y2="101" stroke="${sc}" stroke-width="14" stroke-linecap="round"/>
+  <line x1="141" y1="259" x2="98" y2="302" stroke="${sc}" stroke-width="14" stroke-linecap="round"/>
+  <circle cx="240" cy="180" r="96" fill="${sc}"/>
+  <circle cx="206" cy="162" r="11" fill="#1a1a2e"/>
+  <circle cx="274" cy="162" r="11" fill="#1a1a2e"/>
+  <path d="M198,200 Q240,228 282,200" fill="none" stroke="#1a1a2e" stroke-width="6" stroke-linecap="round"/>`;
+  } else if (/\bhouse\b/.test(text)) {
+    body = `
+  <rect x="100" y="170" width="280" height="180" fill="${c}" rx="4"/>
+  <polygon points="78,175 240,52 402,175" fill="#c0392b"/>
+  <rect x="200" y="278" width="80" height="72" fill="#8d5524" rx="4"/>
+  <circle cx="270" cy="318" r="6" fill="#f39c12"/>
+  <rect x="120" y="206" width="68" height="54" fill="#a8d8ea" rx="3"/>
+  <line x1="154" y1="206" x2="154" y2="260" stroke="#6aa0b0" stroke-width="2"/>
+  <line x1="120" y1="233" x2="188" y2="233" stroke="#6aa0b0" stroke-width="2"/>
+  <rect x="292" y="206" width="68" height="54" fill="#a8d8ea" rx="3"/>
+  <line x1="326" y1="206" x2="326" y2="260" stroke="#6aa0b0" stroke-width="2"/>
+  <line x1="292" y1="233" x2="360" y2="233" stroke="#6aa0b0" stroke-width="2"/>`;
+  } else if (/\bflower\b/.test(text)) {
+    body = `
+  <line x1="240" y1="332" x2="240" y2="218" stroke="#2ecc71" stroke-width="10" stroke-linecap="round"/>
+  <ellipse cx="202" cy="278" rx="36" ry="16" fill="#2ecc71" transform="rotate(-40 202 278)"/>
+  <ellipse cx="278" cy="266" rx="36" ry="16" fill="#2ecc71" transform="rotate(40 278 266)"/>
+  <ellipse cx="240" cy="138" rx="24" ry="52" fill="${c}"/>
+  <ellipse cx="240" cy="222" rx="24" ry="52" fill="${c}"/>
+  <ellipse cx="190" cy="180" rx="52" ry="24" fill="${c}"/>
+  <ellipse cx="290" cy="180" rx="52" ry="24" fill="${c}"/>
+  <ellipse cx="206" cy="146" rx="22" ry="52" fill="${c}" transform="rotate(45 206 146)"/>
+  <ellipse cx="274" cy="146" rx="22" ry="52" fill="${c}" transform="rotate(-45 274 146)"/>
+  <ellipse cx="206" cy="214" rx="22" ry="52" fill="${c}" transform="rotate(-45 206 214)"/>
+  <ellipse cx="274" cy="214" rx="22" ry="52" fill="${c}" transform="rotate(45 274 214)"/>
+  <circle cx="240" cy="180" r="42" fill="#f1c40f"/>`;
+  } else if (/\btree\b/.test(text)) {
+    const tc = c === '#3498db' ? '#2ecc71' : c;
+    body = `
+  <rect x="214" y="258" width="52" height="98" fill="#8d5524" rx="4"/>
+  <polygon points="240,40 346,202 134,202" fill="${tc}"/>
+  <polygon points="240,86 358,238 122,238" fill="${tc}"/>`;
+  } else if (/\bheart\b/.test(text)) {
+    const hc = c === '#3498db' ? '#e74c3c' : c;
+    body = `
+  <path d="M240,308 L62,150 C62,80 130,54 178,90 C200,104 228,132 240,150 C252,132 280,104 302,90 C350,54 418,80 418,150 Z" fill="${hc}"/>
+  <ellipse cx="172" cy="132" rx="26" ry="40" fill="white" opacity="0.22" transform="rotate(-35 172 132)"/>`;
+  } else if (/\bfish\b/.test(text)) {
+    body = `
+  <polygon points="100,180 58,120 58,240" fill="${c}" opacity="0.85"/>
+  <ellipse cx="240" cy="180" rx="140" ry="78" fill="${c}"/>
+  <circle cx="330" cy="162" r="18" fill="white"/>
+  <circle cx="332" cy="162" r="10" fill="#111"/>
+  <circle cx="336" cy="157" r="4" fill="white"/>
+  <path d="M202,132 Q190,180 202,228" fill="none" stroke="white" stroke-width="2" opacity="0.35"/>
+  <path d="M242,124 Q228,180 242,236" fill="none" stroke="white" stroke-width="2" opacity="0.35"/>
+  <path d="M282,128 Q270,180 282,232" fill="none" stroke="white" stroke-width="2" opacity="0.35"/>`;
+  } else if (/\bbird\b/.test(text)) {
+    body = `
+  <ellipse cx="230" cy="202" rx="88" ry="64" fill="${c}"/>
+  <circle cx="322" cy="165" r="52" fill="${c}"/>
+  <ellipse cx="186" cy="194" rx="80" ry="38" fill="${c}" opacity="0.8" transform="rotate(-15 186 194)"/>
+  <polygon points="373,162 416,178 373,190" fill="#f39c12"/>
+  <circle cx="336" cy="154" r="12" fill="#111"/>
+  <circle cx="338" cy="152" r="5" fill="white"/>
+  <path d="M148,204 C98,232 80,282 118,310" fill="none" stroke="${c}" stroke-width="18" stroke-linecap="round"/>`;
+  } else {
+    const hash = hashString(prompt);
+    const cx2 = 90 + (hash % 220);
+    const cy2 = 110 + (hash % 120);
+    const r2 = 38 + (hash % 44);
+    body = `
+  <circle cx="${cx2}" cy="${cy2}" r="${r2}" fill="${c}" opacity="0.95"/>
+  <rect x="252" y="72" width="128" height="128" rx="28" fill="${c}" opacity="0.7"/>
+  <path d="M50,280 C120,220 180,220 240,280 S360,340 430,280" fill="none" stroke="${c}" stroke-width="14" stroke-linecap="round"/>`;
+  }
+
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="480" height="360" viewBox="0 0 480 360">
+  <rect width="480" height="360" rx="12" fill="${bg}"/>${body}
+  <text x="240" y="350" font-family="Arial, sans-serif" font-size="15" fill="#a6adc8" text-anchor="middle">${label}</text>
+</svg>`;
+}
+
 app.get('/generated-image.svg', (req, res) => {
   const prompt = normalizeText(req.query?.prompt || 'creative scene') || 'creative scene';
-  const safePrompt = escapeSvgText(prompt);
-  const size = Math.max(128, Math.min(1024, GENERATED_IMAGE_SIZE));
-  const hash = hashString(prompt);
-  const palette = [
-    ['#1e1e2e', '#89b4fa', '#a6e3a1'],
-    ['#11111b', '#f9e2af', '#f38ba8'],
-    ['#0f172a', '#38bdf8', '#c4b5fd'],
-    ['#1f2937', '#34d399', '#fbbf24']
-  ][hash % 4];
-  const cx = 90 + (hash % 220);
-  const cy = 110 + (hash % 120);
-  const radius = 38 + (hash % 44);
-  const svg = `<?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 480 360">
-  <rect width="480" height="360" rx="24" fill="${palette[0]}"/>
-  <circle cx="${cx}" cy="${cy}" r="${radius}" fill="${palette[1]}" opacity="0.95"/>
-  <rect x="250" y="70" width="130" height="130" rx="24" fill="${palette[2]}" opacity="0.9"/>
-  <path d="M50 280 C120 220, 180 220, 240 280 S360 340, 430 280" fill="none" stroke="${palette[1]}" stroke-width="14" stroke-linecap="round"/>
-  <text x="240" y="250" font-family="Arial, sans-serif" font-size="28" font-weight="bold" fill="#ffffff" text-anchor="middle">AI Sprite Art</text>
-  <text x="240" y="292" font-family="Arial, sans-serif" font-size="20" fill="#e5e7eb" text-anchor="middle">${safePrompt.slice(0, 36)}</text>
-</svg>`;
+  const svg = buildSubjectSvg(prompt);
   res.type('image/svg+xml').send(svg);
 });
 
