@@ -9,6 +9,7 @@ Usage:
 """
 
 import argparse
+import json
 import math
 import os
 import re
@@ -34,6 +35,10 @@ itos: dict = {}
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 CHECKPOINT = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'model_checkpoint.pt')
 DATASET = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'data', 'conversations.txt')
+FEEDBACK_LOG = os.getenv(
+    'FEEDBACK_LOG_PATH',
+    os.path.join(os.path.dirname(os.path.abspath(__file__)), 'data', 'feedback_log.jsonl')
+)
 sessions: dict[str, list[str]] = {}   # short-term history per session
 HISTORY_TURNS = 8
 knowledge_pairs: list[tuple[str, str]] = []
@@ -456,6 +461,44 @@ def clean_reply(text: str) -> str:
     return reply
 
 
+def is_low_quality_reply(reply: str) -> tuple[bool, str]:
+    text = normalize_message(reply)
+    if not text:
+        return True, 'empty'
+
+    generic_markers = [
+        'i am still learning',
+        'ask a specific question',
+        'i could not understand that'
+    ]
+    for marker in generic_markers:
+        if marker in text:
+            return True, f'generic:{marker}'
+
+    if len(text.split()) < 3:
+        return True, 'too_short'
+    return False, ''
+
+
+def log_feedback_event(session_id: str, user_message: str, assistant_reply: str):
+    needs_improvement, reason = is_low_quality_reply(assistant_reply)
+    event = {
+        'ts': datetime.utcnow().isoformat(timespec='seconds') + 'Z',
+        'sessionId': session_id,
+        'user': user_message,
+        'assistant': assistant_reply,
+        'needsImprovement': needs_improvement,
+        'reason': reason,
+    }
+
+    try:
+        os.makedirs(os.path.dirname(FEEDBACK_LOG), exist_ok=True)
+        with open(FEEDBACK_LOG, 'a', encoding='utf-8') as handle:
+            handle.write(json.dumps(event, ensure_ascii=False) + '\n')
+    except Exception:
+        pass
+
+
 def looks_bad(text: str) -> bool:
     reply = clean_reply(text)
     if len(reply) < 2:
@@ -552,6 +595,14 @@ def load_model():
 
 @app.get('/health')
 def health():
+    feedback_events = 0
+    if os.path.exists(FEEDBACK_LOG):
+        try:
+            with open(FEEDBACK_LOG, 'r', encoding='utf-8') as handle:
+                feedback_events = sum(1 for _ in handle)
+        except Exception:
+            feedback_events = 0
+
     return jsonify({
         'ok': model is not None,
         'checkpoint': CHECKPOINT,
@@ -559,6 +610,8 @@ def health():
         'embeddingModel': embedding_model_name,
         'embeddingReady': knowledge_embeddings is not None,
         'embeddingError': embedding_error,
+        'feedbackLogPath': FEEDBACK_LOG,
+        'feedbackEvents': feedback_events,
     })
 
 
@@ -576,6 +629,7 @@ def chat():
 
     history = sessions.get(session_id, [])
     reply = answer_message(user_message, history)
+    log_feedback_event(session_id, user_message, reply)
 
     # Update session history
     new_history = history + [f"User: {user_message}", f"Assistant: {reply}"]
@@ -598,6 +652,7 @@ def chat_plain():
 
     history = sessions.get(session_id, [])
     reply = answer_message(user_message, history)
+    log_feedback_event(session_id, user_message, reply)
 
     new_history = history + [f"User: {user_message}", f"Assistant: {reply}"]
     sessions[session_id] = new_history[-(HISTORY_TURNS * 2):]
