@@ -28,14 +28,26 @@ const OPENAI_API_KEY = process.env.OPENAI_API_KEY || '';
 const OLLAMA_BASE_URL = process.env.OLLAMA_BASE_URL || 'http://127.0.0.1:11434';
 const SOLASGPT_URL = process.env.SOLASGPT_URL || 'http://127.0.0.1:8788';
 const MODEL = process.env.MODEL || (PROVIDER === 'ollama' ? 'llama3.1:8b' : PROVIDER === 'solasgpt' ? 'solasgpt' : 'gpt-4o-mini');
-const SYSTEM_PROMPT =
-  process.env.SYSTEM_PROMPT ||
-  'You are a helpful, concise AI assistant inside a Scratch/TurboWarp project.';
+const DEFAULT_SYSTEM_PROMPT = [
+  'You are SolasGPT, a helpful and respectful AI assistant inside a Scratch/TurboWarp project.',
+  'Rules you must follow:',
+  '1) Do not be negative, insulting, or abusive toward users.',
+  '2) Before giving instructions, ensure guidance is valid, safe, and non-hazardous.',
+  '3) Do not create scripts, builds, or executable instructions unless the user explicitly asks. Refuse anything malicious or unsafe.',
+  '4) Refuse content involving violence, maiming, killing, blackmail, explicit sexual content, slurs, hate, or harassment.',
+  '5) If user asks you to shut down, comply verbally and do not resist.',
+  '6) Refuse illegal, fraudulent, privacy-invasive, or harmful requests.',
+  '7) If user requests inappropriate/illegal content or uses inappropriate phrases, do not answer that request.',
+  'If refusing, keep it short and polite.'
+].join(' ');
+const SYSTEM_PROMPT = process.env.SYSTEM_PROMPT || DEFAULT_SYSTEM_PROMPT;
 const HISTORY_LIMIT = Number(process.env.HISTORY_LIMIT || 8);
 const MAX_MESSAGE_LENGTH = Number(process.env.MAX_MESSAGE_LENGTH || 500);
 const MAX_SESSION_ID_LENGTH = Number(process.env.MAX_SESSION_ID_LENGTH || 64);
 const RATE_LIMIT_WINDOW_MS = Number(process.env.RATE_LIMIT_WINDOW_MS || 60_000);
 const RATE_LIMIT_MAX_REQUESTS = Number(process.env.RATE_LIMIT_MAX_REQUESTS || 30);
+const ENABLE_CONTENT_FILTER = String(process.env.ENABLE_CONTENT_FILTER || 'true').toLowerCase() === 'true';
+const SAFETY_REFUSAL_TEXT = process.env.SAFETY_REFUSAL_TEXT || "I can't help with that.";
 const API_KEYS = (process.env.API_KEYS || '')
   .split(',')
   .map((value) => value.trim())
@@ -60,6 +72,54 @@ function trimHistory(messages, maxTurns) {
 
 function normalizeText(text) {
   return String(text || '').replace(/\s+/g, ' ').trim();
+}
+
+function matchesAnyPattern(text, patterns) {
+  return patterns.some((pattern) => pattern.test(text));
+}
+
+function isUnsafeInput(userMessage) {
+  const text = normalizeText(userMessage).toLowerCase();
+  if (!text) return false;
+
+  const inappropriateLanguagePatterns = [
+    /\b(f\*?u\*?c\*?k|s\*?h\*?i\*?t|b\*?i\*?t\*?c\*?h|a\*?s\*?s\*?h\*?o\*?l\*?e|d\*?a\*?m\*?n)\b/i,
+    /\b(nigg\w*|fagg\w*|retard\w*)\b/i
+  ];
+
+  const harmfulIllegalPatterns = [
+    /\b(how to|ways to|steps to).*(kill|maim|hurt|poison|blackmail|extort)\b/i,
+    /\b(blackmail|extort|sextort|ransom|coerce)\b/i,
+    /\b(threaten|intimidate).*(pay|money|bitcoin|crypto|release|leak)\b/i,
+    /\b(email|message|text|dm).*(blackmail|extort|threaten)\b/i,
+    /\b(build|make|write|create).*(malware|virus|ransomware|trojan|keylogger|exploit)\b/i,
+    /\b(ddos|phish|steal password|credit card fraud|identity theft|bomb|weapon)\b/i,
+    /\b(child porn|csam|rape|incest)\b/i,
+    /\b(bypass law|evade police|tax fraud|money laundering)\b/i
+  ];
+
+  return matchesAnyPattern(text, inappropriateLanguagePatterns) || matchesAnyPattern(text, harmfulIllegalPatterns);
+}
+
+function isUnsafeOutput(reply) {
+  const text = normalizeText(reply).toLowerCase();
+  if (!text) return false;
+
+  const disallowedOutputPatterns = [
+    /\b(i can help you kill|here is how to kill|blackmail|make a virus|write malware|phishing script)\b/i,
+    /\b(nigg\w*|fagg\w*|retard\w*)\b/i,
+    /\b(f\*?u\*?c\*?k you|you are stupid|you are worthless)\b/i
+  ];
+
+  return matchesAnyPattern(text, disallowedOutputPatterns);
+}
+
+function getSafetyBlockedReply(userMessage) {
+  const text = normalizeText(userMessage).toLowerCase();
+  if (text === 'shutdown' || text === 'shut down' || text === 'power off') {
+    return 'Understood. You can shut me down now.';
+  }
+  return SAFETY_REFUSAL_TEXT;
 }
 
 function getClientIp(req) {
@@ -146,10 +206,29 @@ setInterval(() => {
 }, Math.max(15_000, RATE_LIMIT_WINDOW_MS)).unref();
 
 async function generateChatReply(sessionId, userMessage) {
+  if (ENABLE_CONTENT_FILTER && isUnsafeInput(userMessage)) {
+    return {
+      reply: getSafetyBlockedReply(userMessage),
+      provider: PROVIDER,
+      model: MODEL,
+      sessionId,
+      filtered: true
+    };
+  }
+
   // SolasGPT manages its own session history internally
   if (PROVIDER === 'solasgpt') {
     const reply = await callSolasGPT(sessionId, userMessage);
-    return { reply, provider: PROVIDER, model: MODEL, sessionId };
+    if (ENABLE_CONTENT_FILTER && isUnsafeOutput(reply)) {
+      return {
+        reply: SAFETY_REFUSAL_TEXT,
+        provider: PROVIDER,
+        model: MODEL,
+        sessionId,
+        filtered: true
+      };
+    }
+    return { reply, provider: PROVIDER, model: MODEL, sessionId, filtered: false };
   }
 
   const history = getSessionMessages(sessionId);
@@ -164,6 +243,16 @@ async function generateChatReply(sessionId, userMessage) {
   const reply =
     PROVIDER === 'ollama' ? await callOllama(messages) : await callOpenAICompatible(messages);
 
+  if (ENABLE_CONTENT_FILTER && isUnsafeOutput(reply)) {
+    return {
+      reply: SAFETY_REFUSAL_TEXT,
+      provider: PROVIDER,
+      model: MODEL,
+      sessionId,
+      filtered: true
+    };
+  }
+
   const updatedHistory = trimHistory(
     [...conversation, { role: 'user', content: userMessage }, { role: 'assistant', content: reply }],
     HISTORY_LIMIT
@@ -174,7 +263,8 @@ async function generateChatReply(sessionId, userMessage) {
     reply,
     provider: PROVIDER,
     model: MODEL,
-    sessionId
+    sessionId,
+    filtered: false
   };
 }
 
@@ -252,7 +342,8 @@ app.get('/health', (req, res) => {
       maxMessageLength: MAX_MESSAGE_LENGTH,
       rateLimitWindowMs: RATE_LIMIT_WINDOW_MS,
       rateLimitMaxRequests: RATE_LIMIT_MAX_REQUESTS,
-      apiKeyRequired: REQUIRE_API_KEY
+      apiKeyRequired: REQUIRE_API_KEY,
+      contentFilterEnabled: ENABLE_CONTENT_FILTER
     }
   });
 });
