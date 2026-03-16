@@ -54,6 +54,7 @@ const WEB_SEARCH_ENABLED = String(process.env.WEB_SEARCH_ENABLED || 'false').toL
 const WEB_SEARCH_TIMEOUT_MS = Number(process.env.WEB_SEARCH_TIMEOUT_MS || 4500);
 const WEB_CONTEXT_MAX_CHARS = Number(process.env.WEB_CONTEXT_MAX_CHARS || 1200);
 const WEB_RESULT_LIMIT = Number(process.env.WEB_RESULT_LIMIT || 3);
+const SOLASGPT_FORWARD_MAX_CHARS = Number(process.env.SOLASGPT_FORWARD_MAX_CHARS || 450);
 const PHRASING_KNOWLEDGE_ENABLED = String(process.env.PHRASING_KNOWLEDGE_ENABLED || 'true').toLowerCase() === 'true';
 const PHRASING_FALLBACK_ON_LOW_QUALITY = String(process.env.PHRASING_FALLBACK_ON_LOW_QUALITY || 'true').toLowerCase() === 'true';
 const API_KEYS = (process.env.API_KEYS || '')
@@ -485,7 +486,8 @@ async function generateChatReply(sessionId, userMessage) {
 
   // SolasGPT manages its own session history internally
   if (PROVIDER === 'solasgpt') {
-    const rawReply = await callSolasGPT(sessionId, userMessageForModel);
+    const forwardedMessage = truncateText(userMessageForModel, SOLASGPT_FORWARD_MAX_CHARS);
+    const rawReply = await callSolasGPT(sessionId, forwardedMessage);
     const usePhrasingFallback =
       PHRASING_KNOWLEDGE_ENABLED && PHRASING_FALLBACK_ON_LOW_QUALITY && looksLowQualityReply(rawReply);
     const reply = usePhrasingFallback ? phraseKnowledgeReply(userMessage, webContext) : rawReply;
@@ -676,6 +678,7 @@ app.get('/health', (req, res) => {
       webSearchEnabled: WEB_SEARCH_ENABLED,
       webResultLimit: WEB_RESULT_LIMIT,
       webContextMaxChars: WEB_CONTEXT_MAX_CHARS,
+      solasgptForwardMaxChars: SOLASGPT_FORWARD_MAX_CHARS,
       phrasingKnowledgeEnabled: PHRASING_KNOWLEDGE_ENABLED,
       phrasingFallbackOnLowQuality: PHRASING_FALLBACK_ON_LOW_QUALITY
     }
