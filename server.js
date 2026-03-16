@@ -563,6 +563,20 @@ function factualKnowledgeReply(questionText) {
   const compact = text.replace(/[^a-z0-9\s']/g, '').trim();
   if (!compact) return null;
 
+  const yearMatch = compact.match(/^how many years until (\d{4})$/);
+  if (yearMatch) {
+    const targetYear = Number(yearMatch[1]);
+    const currentYear = new Date().getFullYear();
+    const diff = targetYear - currentYear;
+    if (diff > 0) {
+      return `There are ${diff} years until ${targetYear}.`;
+    }
+    if (diff === 0) {
+      return `${targetYear} is this year.`;
+    }
+    return `${targetYear} was ${Math.abs(diff)} years ago.`;
+  }
+
   const factPatterns = [
     [/^how many days (are )?in (a|an|one) week$/, 'There are 7 days in a week.'],
     [/^how many hours (are )?in (a|an|one) day$/, 'There are 24 hours in a day.'],

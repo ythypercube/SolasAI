@@ -12,6 +12,7 @@ import argparse
 import math
 import os
 import re
+from datetime import datetime
 from collections import Counter
 
 import torch
@@ -270,6 +271,17 @@ def factual_reply(user_message: str) -> str | None:
     compact = re.sub(r"[^a-z0-9\s']+", '', text).strip()
     if not compact:
         return None
+
+    year_match = re.fullmatch(r"how many years until (\d{4})", compact)
+    if year_match:
+        target_year = int(year_match.group(1))
+        current_year = int(os.getenv('CURRENT_YEAR_OVERRIDE', '0')) or int(datetime.now().year)
+        diff = target_year - current_year
+        if diff > 0:
+            return f"There are {diff} years until {target_year}."
+        if diff == 0:
+            return f"{target_year} is this year."
+        return f"{target_year} was {abs(diff)} years ago."
 
     facts: list[tuple[str, str]] = [
         (r"^how many days (are )?in (a|an|one) week$", 'There are 7 days in a week.'),
