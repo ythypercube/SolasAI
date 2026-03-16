@@ -413,11 +413,12 @@ function phraseKnowledgeReply(userMessage, webContext) {
   const topic = pickTopic(originalQuestion);
   const hasWeb = Boolean(webContext?.sources?.length);
   const sourceLine = hasWeb ? ` I checked web context from: ${webContext.sources.slice(0, 2).join(', ')}.` : '';
+  const greetingPattern = /^(hi|hello|hey|yo)\b[\s!,.?]*$/i;
 
   if (!text) {
     return 'I am ready. Ask me anything and I will answer clearly.';
   }
-  if (text === 'hi' || text === 'hello' || text === 'hey') {
+  if (greetingPattern.test(text)) {
     return 'Hello! I am SolasGPT. Ask a question and I will give a clear, friendly answer.';
   }
   if (text.includes('what can you do')) {
@@ -436,7 +437,7 @@ function phraseKnowledgeReply(userMessage, webContext) {
     return `I can help with ${topic}. Tell me your exact goal and I will give a concise step-by-step answer.`;
   }
 
-  return `Thanks for your question about ${topic}. I can provide a concise summary first, then details if you want.${sourceLine}`;
+  return `Thanks for your question. I can provide a concise summary first, then details if you want.${sourceLine}`;
 }
 
 function getClientIp(req) {
