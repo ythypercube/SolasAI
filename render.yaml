@@ -1,0 +1,35 @@
+services:
+  - type: web
+    name: solasai-backend
+    env: node
+    rootDir: .
+    plan: free
+    buildCommand: npm install
+    startCommand: node server.js
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      - key: NODE_VERSION
+        value: 20
+      - key: PROVIDER
+        value: solasgpt
+      - key: MODEL
+        value: solasgpt
+      - key: SOLASGPT_URL
+        value: https://solasai-database.onrender.com
+      - key: ALLOWED_ORIGINS
+        value: https://turbowarp.org
+      - key: REQUIRE_API_KEY
+        value: true
+      - key: API_KEYS
+        sync: false
+      - key: MAX_MESSAGE_LENGTH
+        value: 500
+      - key: MAX_SESSION_ID_LENGTH
+        value: 64
+      - key: RATE_LIMIT_WINDOW_MS
+        value: 60000
+      - key: RATE_LIMIT_MAX_REQUESTS
+        value: 30
+      - key: HISTORY_LIMIT
+        value: 8
