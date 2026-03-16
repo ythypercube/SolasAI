@@ -148,13 +148,20 @@ function solveMathQuery(userMessage) {
 
 function isImageRequest(userMessage) {
   const text = normalizeText(userMessage).toLowerCase();
-  return /\b(draw|generate image|make an image|create an image|make a sprite|create a sprite|draw a)\b/.test(text);
+  // Catch "draw [anything]"
+  if (/\bdraw\b/.test(text)) return true;
+  // Catch "generate/make/create [... up to 70 chars ...] image/picture/sprite/art/drawing/photo"
+  if (/\b(generate|make|create)\b.{0,70}\b(image|picture|sprite|art|drawing|photo)\b/.test(text)) return true;
+  // Catch "show me a/an image/picture/sprite"
+  if (/\bshow\s+me\s+(a\s+|an\s+)?(image|picture|sprite|drawing|photo)\b/.test(text)) return true;
+  return false;
 }
 
 function extractImagePrompt(userMessage) {
   const raw = normalizeText(userMessage);
   return raw
-    .replace(/^(please\s+)?(draw|generate image of|generate image|make an image of|make an image|create an image of|create an image|make a sprite of|make a sprite|create a sprite of|create a sprite|draw a)\s+/i, '')
+    // Strip leading verb phrase: "please generate a", "draw a", "make me a", etc.
+    .replace(/^(please\s+)?(generate|make|create|draw|show\s+me)\s+(a\s+|an\s+|me\s+a\s+|me\s+an\s+)?/i, '')
     .trim() || 'creative scene';
 }
 
