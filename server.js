@@ -1115,6 +1115,12 @@ function normalizeState(state) {
   const villagerNearbyCount = Number(state.villagerNearbyCount);
   const nearestHostileDistance = Number(state.nearestHostileDistance);
   const lastPearlUseTick = Number(state.lastPearlUseTick);
+    const yaw = Number(state.yaw);
+    const pitch = Number(state.pitch);
+    const nearestHostileDx = Number(state.nearestHostileDx);
+    const nearestHostileDz = Number(state.nearestHostileDz);
+    const nearestEnemyDx = Number(state.nearestEnemyDx);
+    const nearestEnemyDz = Number(state.nearestEnemyDz);
   return {
     x: Number.isFinite(x) ? x : 0,
     z: Number.isFinite(z) ? z : 0,
@@ -1196,6 +1202,8 @@ function normalizeState(state) {
     villagerNearbyCount: Number.isFinite(villagerNearbyCount) ? villagerNearbyCount : 0,
     nearestHostile: normalizeText(state.nearestHostile || '').toLowerCase(),
     nearestHostileDistance: Number.isFinite(nearestHostileDistance) ? nearestHostileDistance : -1,
+      nearestHostileDx: Number.isFinite(nearestHostileDx) ? nearestHostileDx : 0,
+      nearestHostileDz: Number.isFinite(nearestHostileDz) ? nearestHostileDz : 0,
     nearestEnemyName: normalizeText(state.nearestEnemyName || ''),
     nearestEnemyDistance: Number.isFinite(nearestEnemyDistance) ? nearestEnemyDistance : -1,
     nearestEnemyHealth: Number.isFinite(nearestEnemyHealth) ? nearestEnemyHealth : 0,
@@ -1205,7 +1213,11 @@ function normalizeState(state) {
     nearestEnemyHasShield: Boolean(state.nearestEnemyHasShield),
     nearestEnemyVelX: Number.isFinite(nearestEnemyVelX) ? nearestEnemyVelX : 0,
     nearestEnemyVelZ: Number.isFinite(nearestEnemyVelZ) ? nearestEnemyVelZ : 0,
+      nearestEnemyDx: Number.isFinite(nearestEnemyDx) ? nearestEnemyDx : 0,
+      nearestEnemyDz: Number.isFinite(nearestEnemyDz) ? nearestEnemyDz : 0,
     bedNearby: Boolean(state.bedNearby),
+      yaw: Number.isFinite(yaw) ? yaw : 0,
+      pitch: Number.isFinite(pitch) ? pitch : 0,
     nearestBedDistance: Number.isFinite(nearestBedDistance) ? nearestBedDistance : -1,
     nearestBedDefenseScore: Number.isFinite(nearestBedDefenseScore) ? nearestBedDefenseScore : 0,
     nearestBedDefenseBlock: normalizeText(state.nearestBedDefenseBlock || '').toLowerCase(),
@@ -1359,15 +1371,46 @@ function buildMinecraftAction(objective, state = {}, sessionCtx = {}) {
 
   if (mode === 'pvp') {
     const strafeLeft = (pulse % 2) === 0;
-    action.attack = true;
-    action.forward = !veryLowHp;
-    action.back = veryLowHp;
-    action.sprint = !lowHp;
-    action.hotbarSlot = s.swordSlot >= 0 ? s.swordSlot : s.axeSlot;
-    action.jump = hasEnemyInCrosshair && s.focusedDistance > 0 && s.focusedDistance < 2.8 && (pulse % 5 === 0);
-    action.left = strafeLeft;
-    action.right = !strafeLeft;
-    action.durationTicks = 5;
+
+    // ── Pick best target (player first, then hostile mob) ────────────────────
+    const hasMobTarget    = s.nearestHostileDistance > 0 && s.nearestHostileDistance < 20;
+    const hasPlayerTarget = s.nearestEnemyDistance   > 0 && s.nearestEnemyDistance   < 24;
+    const targetDx   = hasPlayerTarget ? s.nearestEnemyDx   : (hasMobTarget ? s.nearestHostileDx   : 0);
+    const targetDz   = hasPlayerTarget ? s.nearestEnemyDz   : (hasMobTarget ? s.nearestHostileDz   : 0);
+    const targetDist = hasPlayerTarget ? s.nearestEnemyDistance : (hasMobTarget ? s.nearestHostileDistance : -1);
+    const hasTarget  = targetDist > 0;
+    const targetName = s.nearestHostile || s.nearestEnemyName || 'target';
+
+    // ── Compute yaw and pitch corrections via atan2 ──────────────────────────
+    // MC yaw: 0=south(+Z), 90=west(−X), −90=east(+X), 180=north(−Z)
+    let aimYawDelta = 0, aimPitchDelta = 0;
+    if (hasTarget && (Math.abs(targetDx) > 0.05 || Math.abs(targetDz) > 0.05)) {
+      const targetYaw = Math.atan2(-targetDx, targetDz) * (180 / Math.PI);
+      let rawYaw = targetYaw - s.yaw;
+      while (rawYaw >  180) rawYaw -= 360;
+      while (rawYaw <= -180) rawYaw += 360;
+      aimYawDelta = clamp(rawYaw, -20, 20);
+      // Pitch: aim at ~1 m above target's feet (center mass)
+      const horiz = Math.sqrt(targetDx * targetDx + targetDz * targetDz);
+      const targetPitch = -Math.atan2(1.0, horiz) * (180 / Math.PI);
+      aimPitchDelta = clamp(targetPitch - s.pitch, -12, 12);
+    }
+    const isAligned = hasEnemyInCrosshair || (hasTarget && Math.abs(aimYawDelta) < 15);
+
+    action.hotbarSlot  = s.swordSlot >= 0 ? s.swordSlot : s.axeSlot;
+    action.attack      = hasTarget && isAligned;
+    action.forward     = hasTarget && targetDist > 2.5 && !veryLowHp;
+    action.back        = veryLowHp || (hasTarget && targetDist < 1.5);
+    action.sprint      = hasTarget && targetDist > 3.5 && !lowHp;
+    action.left        = strafeLeft  && hasTarget;
+    action.right       = !strafeLeft && hasTarget;
+    action.jump        = isAligned && hasTarget && targetDist < 2.8 && s.onGround && (pulse % 5 === 0);
+    action.yawDelta    = hasTarget ? aimYawDelta : 9;   // steady sweep when no target visible
+    action.pitchDelta  = hasTarget ? aimPitchDelta : 0;
+    action.durationTicks = 4;
+    noteParts.push(hasTarget
+      ? `PVP: tracking ${targetName} dist=${targetDist.toFixed(1)} yawErr=${aimYawDelta.toFixed(0)}°`
+      : 'PVP: scanning for target.');
 
     if (!s.hasMeleeWeapon && s.focusedDistance > 0 && s.focusedDistance < 2.4) {
       action.back = true;
@@ -1413,28 +1456,6 @@ function buildMinecraftAction(objective, state = {}, sessionCtx = {}) {
       }
     }
 
-    if (hasEnemyInCrosshair && s.focusedDistance > 0) {
-      if (s.focusedDistance > 3.2) action.forward = true;
-      if (s.focusedDistance < 1.8) {
-        action.back = true;
-        action.forward = false;
-      }
-      action.yawDelta = clamp((pulse % 3) - 1, -1, 1);
-    } else {
-      // Unidirectional sweep to scan for enemy (no jitter)
-      action.yawDelta = 9;
-    }
-
-    // Mob combat: no player enemy but hostile mob nearby – aim at it
-    const mobNearby = s.nearestHostileDistance > 0 && s.nearestHostileDistance < 10;
-    if (mobNearby && s.nearestEnemyDistance < 0) {
-      action.attack = hasEnemyInCrosshair;
-      action.forward = s.nearestHostileDistance > 2.5;
-      action.back = s.nearestHostileDistance <= 1.5;
-      action.sprint = s.nearestHostileDistance > 4;
-      action.hotbarSlot = s.swordSlot >= 0 ? s.swordSlot : (s.axeSlot >= 0 ? s.axeSlot : action.hotbarSlot);
-      noteParts.push(`Mob combat: targeting ${s.nearestHostile} at ${s.nearestHostileDistance.toFixed(1)}m.`);
-    }
 
     // Mace breach swap: if enemy has shield and we have mace, swap to mace periodically
     if (breachSwapNeeded && (pulse % 8 === 0)) {
