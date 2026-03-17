@@ -307,6 +307,36 @@ function scratchCodingReply(userMessage) {
   const text = normalizeText(userMessage).toLowerCase();
   if (!text) return null;
 
+  const looksLikeJumpPhysics = /\b(jump|double jump|gravity|platformer|fall|yvel|vertical velocity)\b/.test(text);
+
+  if (/\b(double jump|2 jumps|max 2 jumps|second jump)\b/.test(text) && looksLikeJumpPhysics) {
+    return {
+      reply: [
+        'Add double jump (max 2 jumps) in Scratch:',
+        'Variables: `yVel`, `jumpsUsed`, `maxJumps`.',
+        'On start: set `yVel` to 0, set `jumpsUsed` to 0, set `maxJumps` to 2.',
+        'When jump key pressed: if `<(jumpsUsed) < (maxJumps)>` then set `yVel` to 12 and change `jumpsUsed` by 1.',
+        'Every frame: change y by `yVel`; change `yVel` by -1 (gravity).',
+        'If touching ground: set `yVel` to 0 and set `jumpsUsed` to 0.'
+      ].join('\n')
+    };
+  }
+
+  if (looksLikeJumpPhysics) {
+    return {
+      reply: [
+        'Use a velocity-based jump/gravity setup in Scratch:',
+        'Variables: `yVel`, `onGround`.',
+        'When green flag clicked: set `yVel` to 0, set `onGround` to 0.',
+        'Forever loop:',
+        '1) If key [space] pressed and `onGround = 1`, set `yVel` to 12.',
+        '2) Change y by `yVel`.',
+        '3) Change `yVel` by -1 (gravity).',
+        '4) If touching ground/platform, move out of ground, set `yVel` to 0, set `onGround` to 1; else set `onGround` to 0.'
+      ].join('\n')
+    };
+  }
+
   if (/\b(variable|variables|set variable|change variable)\b/.test(text) && /\b(scratch|turbowarp)\b/.test(text)) {
     return {
       reply: [
@@ -351,19 +381,6 @@ function scratchCodingReply(userMessage) {
         '2) Use `create clone of myself`.',
         '3) Put clone behavior under `when I start as a clone`.',
         '4) Delete the clone when it is no longer needed.'
-      ].join('\n')
-    };
-  }
-
-  if (/\b(scratch|turbowarp)\b/.test(text)) {
-    return {
-      reply: [
-        'Scratch/TurboWarp helper mode:',
-        '1) Define one clear goal (example: "make jump with gravity").',
-        '2) Identify key variables/lists/events needed.',
-        '3) Build the smallest working script first.',
-        '4) Test result, then refine with one change at a time.',
-        'Send your exact feature and I will return block-by-block steps.'
       ].join('\n')
     };
   }
@@ -1020,7 +1037,7 @@ function getModeFromObjective(text) {
   if (/\b(resource|farm|collect|get|gather|mining run|ore run|generator)\b/.test(text) && /\b(iron|redstone|diamond|gold|emerald)\b/.test(text)) return 'resource';
   if (/\b(clutch|water bucket|mlg|save|fall clutch)\b/.test(text)) return 'clutch';
   if (/\b(bedwars|bed war|rush bed|defend bed|bridge to bed)\b/.test(text)) return 'bedwars';
-  if (/\b(pvp|fight|combat|attack|kill|duel|combo|w tap)\b/.test(text)) return 'pvp';
+  if (/\b(pvp|fight|combat|attack|kill|defeat|slay|duel|combo|w tap)\b/.test(text)) return 'pvp';
   if (/\b(build|place|bridge|tower|wall|house|base|speedbridge|godbridge|telly|telly ?bridge|tele ?bridge|andromeda|andromeda ?bridge)\b/.test(text)) return 'build';
   return 'general';
 }
@@ -1220,7 +1237,8 @@ function buildMinecraftAction(objective, state = {}, sessionCtx = {}) {
 
   const noteParts = [];
   const pulse = sessionCtx.tickCounter || 0;
-  const hasEnemyInCrosshair = /player|zombie|skeleton|creeper|spider|enderman|villager/i.test(s.focusedEntity);
+  const hasEnemyInCrosshair = s.focusedDistance > 0 && s.focusedEntity.length > 0 &&
+    /player|zombie|skeleton|creeper|spider|enderman|villager|golem|iron_golem|slime|witch|phantom|blaze|piglin|hoglin|ravager|warden|ghast|guardian|pillager|vindicator|evoker|shulker|magma_cube|silverfish|endermite|vex|bee|wolf|cave_spider|drowned|husk|stray|bogged|breeze/i.test(s.focusedEntity);
   const lowHp = s.health <= 8;
   const veryLowHp = s.health <= 5;
   const edgeRisk = s.fallDistance > 2.2 || (!s.onGround && s.verticalSpeed < -0.4);
@@ -1289,16 +1307,6 @@ function buildMinecraftAction(objective, state = {}, sessionCtx = {}) {
     noteParts.push('Holding still.');
     action.durationTicks = 6;
     return { action, note: noteParts.join(' '), mode };
-  }
-
-  if (lowHp && s.utilityFoodSlot >= 0) {
-    action.use = true;
-    action.hotbarSlot = s.utilityFoodSlot;
-    action.back = true;
-    action.forward = false;
-    action.sprint = false;
-    action.durationTicks = Math.min(action.durationTicks, 6);
-    noteParts.push('Low HP healing: eating food before re-engage.');
   }
 
   if (mode === 'clutch' || edgeRisk) {
@@ -1413,7 +1421,19 @@ function buildMinecraftAction(objective, state = {}, sessionCtx = {}) {
       }
       action.yawDelta = clamp((pulse % 3) - 1, -1, 1);
     } else {
-      action.yawDelta = (pulse % 2 === 0) ? 6 : -6;
+      // Unidirectional sweep to scan for enemy (no jitter)
+      action.yawDelta = 9;
+    }
+
+    // Mob combat: no player enemy but hostile mob nearby – aim at it
+    const mobNearby = s.nearestHostileDistance > 0 && s.nearestHostileDistance < 10;
+    if (mobNearby && s.nearestEnemyDistance < 0) {
+      action.attack = hasEnemyInCrosshair;
+      action.forward = s.nearestHostileDistance > 2.5;
+      action.back = s.nearestHostileDistance <= 1.5;
+      action.sprint = s.nearestHostileDistance > 4;
+      action.hotbarSlot = s.swordSlot >= 0 ? s.swordSlot : (s.axeSlot >= 0 ? s.axeSlot : action.hotbarSlot);
+      noteParts.push(`Mob combat: targeting ${s.nearestHostile} at ${s.nearestHostileDistance.toFixed(1)}m.`);
     }
 
     // Mace breach swap: if enemy has shield and we have mace, swap to mace periodically
@@ -1907,6 +1927,23 @@ function buildMinecraftAction(objective, state = {}, sessionCtx = {}) {
 
   if (hasEnemyInCrosshair && !action.attack && /\b(pvp|fight|bedwars|kill|rush)\b/.test(text)) {
     action.attack = true;
+  }
+
+  // ── Auto-eat: eat best food when HP is low ─────────────────────────────────
+  const canEat = s.utilityFoodSlot >= 0 && s.food < 19;
+  const criticalEat = canEat && s.health <= 6;
+  const normalEat = canEat && s.health <= 12 && !enemyVeryClose &&
+    (mode !== 'pvp' || (s.nearestEnemyDistance < 0 && s.nearestHostileDistance > 3));
+  if (criticalEat || normalEat) {
+    action.use = true;
+    action.attack = false;
+    action.hotbarSlot = s.utilityFoodSlot;
+    action.forward = false;
+    action.back = !enemyVeryClose;
+    action.sprint = false;
+    action.sneak = enemyNearby && !criticalEat;
+    action.durationTicks = 6;
+    noteParts.push(`Auto-eat: restoring HP (hp=${s.health.toFixed(1)}, food=${s.food}).`);
   }
 
   if (!Object.values(action).some(v => v === true)) {
