@@ -447,8 +447,8 @@ def clean_reply(text: str) -> str:
     reply = reply.lstrip(':;- ').strip()
     if reply and reply[0].islower():
         reply = reply[0].upper() + reply[1:]
-    if len(reply) > 260:
-        reply = reply[:260].rsplit(' ', 1)[0].strip()
+    if len(reply) > 420:
+        reply = reply[:420].rsplit(' ', 1)[0].strip()
 
     if reply and reply[-1] not in '.!?':
         for mark in '.!?':
@@ -535,7 +535,8 @@ def assume_high_probability_reply(user_message: str, best_answer: str | None = N
 
     return clean_reply(
         f'I will assume the most likely intent is practical help with {topic}. '
-        'Start by defining the goal, listing the inputs, doing one concrete step, and checking the result.'
+        'Start by defining the goal, listing the important inputs, doing the first sensible step, and checking the result before continuing. '
+        'If you want a more exact answer, you can give me a little more context and I can make the explanation more specific.'
     )
 
 
@@ -563,7 +564,7 @@ def answer_message(user_message: str, history: list[str]) -> str:
         return clean_reply(best_answer)
 
     prompt = build_prompt(history, user_message)
-    reply = generate_reply(prompt, max_new_tokens=100, temperature=0.7, top_k=24)
+    reply = generate_reply(prompt, max_new_tokens=160, temperature=0.7, top_k=24)
     if looks_bad(reply) and best_answer and score >= 0.42:
         return clean_reply(best_answer)
     if looks_bad(reply):
@@ -573,6 +574,7 @@ def answer_message(user_message: str, history: list[str]) -> str:
 
 def build_prompt(history: list[str], user_message: str) -> str:
     lines = history[-(HISTORY_TURNS * 2):]
+    lines.append('System: Give a clear answer with helpful detail. When useful, include a short explanation or a few steps.')
     lines.append(f"User: {user_message}")
     lines.append("Assistant:")
     return '\n'.join(lines) + ''

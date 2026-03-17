@@ -31,6 +31,7 @@ const MODEL = process.env.MODEL || (PROVIDER === 'ollama' ? 'llama3.1:8b' : PROV
 const DEFAULT_SYSTEM_PROMPT = [
   'You are SolasGPT, a helpful and respectful AI assistant inside a Scratch/TurboWarp project.',
   'You are especially good at Scratch and TurboWarp coding help, including variables, lists, high scores, broadcasts, clones, movement, timers, and simple game logic.',
+  'Give clear, useful answers with a bit of detail. When helpful, include a short explanation, steps, or an example instead of replying too briefly.',
   'Rules you must follow:',
   '1) Do not be negative, insulting, or abusive toward users.',
   '2) Before giving instructions, ensure guidance is valid, safe, and non-hazardous.',
@@ -364,7 +365,7 @@ function buildUserMessageWithWebContext(userMessage, webContext) {
     webContext.contextText,
     '',
     `User question: ${userMessage}`,
-    'Answer concisely and cite source URLs when using web context.'
+    'Answer clearly with useful detail, and cite source URLs when using web context.'
   ].join('\n');
 }
 
@@ -459,50 +460,97 @@ function attachReasoningSummary(reply, summary) {
   return `${summary}\n\n${reply}`;
 }
 
+function normalizeDisplayText(text) {
+  return String(text || '')
+    .replace(/\r\n?/g, '\n')
+    .replace(/[ \t]+\n/g, '\n')
+    .replace(/\n[ \t]+/g, '\n')
+    .replace(/[ \t]{2,}/g, ' ')
+    .trim();
+}
+
+function preserveListBreaks(text) {
+  const normalized = normalizeDisplayText(text);
+  if (!normalized) return normalized;
+
+  return normalized
+    .replace(/([:])\s+(\d+\))/g, '$1\n$2')
+    .replace(/([:])\s+(\d+\.)/g, '$1\n$2')
+    .replace(/([:])\s+(•)/g, '$1\n$2')
+    .replace(/([.?!])\s+(\d+\))/g, '$1\n$2')
+    .replace(/([.?!])\s+(\d+\.)/g, '$1\n$2')
+    .replace(/([.?!])\s+(•)/g, '$1\n$2')
+    .replace(/([^\n])\s+(\d+\))/g, (match, prefix, item) => {
+      if (/^[\[(/{-]$/.test(prefix)) {
+        return `${prefix} ${item}`;
+      }
+      return `${prefix}\n${item}`;
+    })
+    .replace(/([^\n])\s+(\d+\.)/g, (match, prefix, item) => {
+      if (/^[\[(/{-]$/.test(prefix)) {
+        return `${prefix} ${item}`;
+      }
+      return `${prefix}\n${item}`;
+    })
+    .replace(/([^\n])\s+(•)/g, (match, prefix, item) => {
+      if (/^[\[(/{-]$/.test(prefix)) {
+        return `${prefix} ${item}`;
+      }
+      return `${prefix}\n${item}`;
+    });
+}
+
 function wrapReplyText(text, preferredWidth = REPLY_WRAP_CHARS, maxOverflow = REPLY_WRAP_OVERFLOW) {
-  const raw = normalizeText(text);
+  const raw = preserveListBreaks(text);
   if (!raw || preferredWidth <= 0) return raw;
 
-  const lines = [];
-  let remaining = raw;
+  const wrappedParagraphs = raw.split('\n').map((segment) => {
+    const paragraph = segment.trim();
+    if (!paragraph) return '';
 
-  while (remaining.length > preferredWidth) {
-    const minBreak = preferredWidth;
-    const maxBreak = Math.min(remaining.length, preferredWidth + maxOverflow);
+    const lines = [];
+    let remaining = paragraph;
 
-    let breakPos = -1;
+    while (remaining.length > preferredWidth) {
+      const minBreak = preferredWidth;
+      const maxBreak = Math.min(remaining.length, preferredWidth + maxOverflow);
 
-    for (let i = minBreak; i < maxBreak; i += 1) {
-      if (remaining[i] === ' ' && /[.!?;:,]/.test(remaining[i - 1] || '')) {
-        breakPos = i;
+      let breakPos = -1;
+
+      for (let i = minBreak; i < maxBreak; i += 1) {
+        if (remaining[i] === ' ' && /[.!?;:,]/.test(remaining[i - 1] || '')) {
+          breakPos = i;
+        }
       }
+
+      if (breakPos === -1) {
+        breakPos = remaining.lastIndexOf(' ', preferredWidth);
+      }
+      if (breakPos === -1) {
+        breakPos = remaining.indexOf(' ', preferredWidth);
+      }
+      if (breakPos === -1) {
+        break;
+      }
+
+      lines.push(remaining.slice(0, breakPos).trim());
+      remaining = remaining.slice(breakPos + 1).trim();
     }
 
-    if (breakPos === -1) {
-      breakPos = remaining.lastIndexOf(' ', preferredWidth);
+    if (remaining) {
+      lines.push(remaining);
     }
-    if (breakPos === -1) {
-      breakPos = remaining.indexOf(' ', preferredWidth);
-    }
-    if (breakPos === -1) {
-      break;
-    }
+    return lines.join('\n');
+  });
 
-    lines.push(remaining.slice(0, breakPos).trim());
-    remaining = remaining.slice(breakPos + 1).trim();
-  }
-
-  if (remaining) {
-    lines.push(remaining);
-  }
-  return lines.join('\n');
+  return wrappedParagraphs.join('\n');
 }
 
 function formatReplyForDisplay(reply, summary) {
   if (String(reply || '').startsWith('IMAGE_URL:')) {
     return reply;
   }
-  const safeReply = normalizeText(reply) || 'I could not generate a response. Please ask again.';
+  const safeReply = normalizeDisplayText(reply) || 'I could not generate a response. Please ask again.';
   const wrapped = wrapReplyText(safeReply);
   return attachReasoningSummary(wrapped, summary);
 }
@@ -697,25 +745,25 @@ function phraseKnowledgeReply(userMessage, webContext) {
     return webGrounded;
   }
   if (greetingPattern.test(text)) {
-    return 'Hello! I am SolasGPT. Ask a question and I will give a clear, friendly answer.';
+    return 'Hello! I am SolasGPT. Ask me a question and I will give a clear, friendly answer with useful detail when it helps.';
   }
   if (text.includes('what can you do')) {
-    return 'I can explain topics, summarize information, help with writing, and answer questions with safe guidance.';
+    return 'I can explain topics, summarize information, help with writing, answer factual questions, and guide you through Scratch or TurboWarp ideas step by step. If you want, I can also break an answer into simple parts or examples.';
   }
   if (text.includes('explain')) {
-    return `Sure — here is a simple explanation of ${topic}: it means understanding the main idea, then breaking it into small practical steps.${sourceLine}`;
+    return `Sure — here is a clearer explanation of ${topic}: start with the main idea, then connect it to the important parts, and finally look at how it works in practice. If you want, I can also turn that into a step-by-step example.${sourceLine}`;
   }
   if (text.startsWith('how do') || text.startsWith('how can') || text.startsWith('how to') || text.includes('how do')) {
-    return `Here is a safe way to approach ${topic}: define the goal, gather the right information, do one step at a time, then verify the result.${sourceLine}`;
+    return `Here is a safe way to approach ${topic}: first define the exact goal, then gather the information or tools you need, do one step at a time in a sensible order, and check the result after each major step. If something looks wrong, revise the previous step instead of guessing.${sourceLine}`;
   }
   if (text.includes('why ')) {
-    return `Great question. The reason is usually a mix of cause, context, and outcome around ${topic}.${sourceLine}`;
+    return `Great question. The reason usually comes from three parts: the main cause, the surrounding context, and the result that follows. Looking at ${topic} that way usually makes the answer much clearer.${sourceLine}`;
   }
   if (text.includes('help')) {
-    return `I can help with ${topic}. Tell me your exact goal and I will give a concise step-by-step answer.`;
+    return `I can help with ${topic}. Tell me your exact goal, what you have already tried, and what result you want, and I will give a clearer step-by-step answer.`;
   }
 
-  return `I will assume the most likely intent is that you want practical help with ${topic}. Start with this approach: define the goal clearly, gather the key inputs, do one concrete step, then verify the result and refine.${sourceLine}`;
+  return `I will assume the most likely intent is that you want practical help with ${topic}. A good starting approach is to define the goal clearly, identify the important inputs or facts, do the first sensible step, check the result, and then refine from there. If you want, I can turn that into a more specific answer or step-by-step plan.${sourceLine}`;
 }
 
 function getClientIp(req) {
