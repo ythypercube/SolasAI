@@ -766,6 +766,92 @@ function phraseKnowledgeReply(userMessage, webContext) {
   return `I will assume the most likely intent is that you want practical help with ${topic}. A good starting approach is to define the goal clearly, identify the important inputs or facts, do the first sensible step, check the result, and then refine from there. If you want, I can turn that into a more specific answer or step-by-step plan.${sourceLine}`;
 }
 
+// ── Robot task parser ─────────────────────────────────────────────────────────
+/**
+ * Detect whether userMessage is a robot-control request and, if so, convert it
+ * into a pipe-separated command string for the local robot bridge.
+ *
+ * Returns null if no robot intent is detected.
+ * Returns { commandStr, reply } where reply contains the chat text + the
+ * special |||ROBOT_CMD||| separator that TurboWarp strips and POSTs locally.
+ */
+function parseRobotTask(userMessage) {
+  const text = normalizeText(userMessage).toLowerCase();
+
+  // Must mention robot control intent
+  const robotIntent = /\b(robot|make the robot|tell the robot|drive|make it (go|move|turn)|go forward|go back(ward)?|turn left|turn right|spin the robot|beep)\b/;
+  // Also accept plain movement phrases if "robot" appears anywhere in the message
+  const hasRobotWord = /\brobot\b/.test(text);
+  const hasMovement = /\b(forward|backward|back|left|right|spin|beep|stop)\b/.test(text);
+
+  if (!robotIntent.test(text) && !(hasRobotWord && hasMovement)) {
+    return null;
+  }
+
+  // Speed modifier
+  const speedMod = /\b(slow(ly)?|gently)\b/.test(text) ? 30
+    : /\b(fast(ly)?|quick(ly)?|speed(y)?|full speed)\b/.test(text) ? 80
+    : 50;
+
+  const commands = [];
+
+  // Split on sequential connectors to process each action segment in order
+  const segments = text.split(/\b(then|and then|after that|next|followed by)\b/i);
+
+  for (const seg of segments) {
+    if (!seg.trim() || /^(then|and then|after that|next|followed by)$/i.test(seg.trim())) continue;
+
+    // Extract optional duration from this segment
+    const durMatch = seg.match(/(\d+(?:\.\d+)?)\s*(?:second|sec)s?\b/);
+    const dur = durMatch ? durMatch[1] : null;
+
+    if (/\b(forward|ahead|straight)\b/.test(seg)) {
+      commands.push(`forward:${dur || '2'}:${speedMod}`);
+    } else if (/\b(backward|back(?:wards?)?|reverse)\b/.test(seg)) {
+      commands.push(`backward:${dur || '2'}:${speedMod}`);
+    } else if (/\bturn\s+left\b|\bleft\b/.test(seg)) {
+      commands.push(`left:${dur || '1'}:${speedMod}`);
+    } else if (/\bturn\s+right\b|\bright\b/.test(seg)) {
+      commands.push(`right:${dur || '1'}:${speedMod}`);
+    } else if (/\bspin\b/.test(seg)) {
+      commands.push(`spin:${dur || '2'}:${speedMod}`);
+    } else if (/\bbeep\b/.test(seg)) {
+      const freqMatch = seg.match(/(\d+)\s*(?:hz|hertz)\b/i);
+      const freq = freqMatch ? freqMatch[1] : '440';
+      commands.push(`beep:${dur || '0.5'}:${freq}`);
+    } else if (/\bstop\b/.test(seg)) {
+      commands.push('stop:0:0');
+    }
+  }
+
+  if (commands.length === 0) return null;
+
+  // Always end with stop if not already
+  if (commands[commands.length - 1] !== 'stop:0:0') {
+    commands.push('stop:0:0');
+  }
+
+  const commandStr = commands.join('|');
+  const humanReadable = commands
+    .filter(c => c !== 'stop:0:0')
+    .map(c => {
+      const [action, duration] = c.split(':');
+      return duration && duration !== '0' ? `${action} for ${duration}s` : action;
+    })
+    .join(', then ');
+
+  const reply = [
+    `Sending robot commands to your Robot Inventor: ${humanReadable}.`,
+    ``,
+    `Make sure the robot bridge is running on your PC:`,
+    `  python robot_bridge.py`,
+    `and the hub is connected via USB.`,
+    `|||ROBOT_CMD|||${commandStr}`
+  ].join('\n');
+
+  return { commandStr, reply };
+}
+
 function getClientIp(req) {
   const forwarded = req.headers['x-forwarded-for'];
   if (typeof forwarded === 'string' && forwarded.length > 0) {
@@ -945,6 +1031,19 @@ async function generateChatReply(sessionId, userMessage, baseUrl = '') {
       sessionId,
       filtered: false,
       reasoningSummary: summary,
+      webSources: []
+    };
+  }
+
+  const robotResult = parseRobotTask(userMessage);
+  if (robotResult) {
+    return {
+      reply: formatReplyForDisplay(robotResult.reply, ''),
+      provider: PROVIDER,
+      model: MODEL,
+      sessionId,
+      filtered: false,
+      reasoningSummary: '',
       webSources: []
     };
   }
