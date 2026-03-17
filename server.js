@@ -1071,6 +1071,8 @@ function normalizeState(state) {
   const totemSlot = Number(state.totemSlot);
   const pearlSlot = Number(state.pearlSlot);
   const maceSlot = Number(state.maceSlot);
+  const breachMaceSlot = Number(state.breachMaceSlot);
+  const maceBreachLevel = Number(state.maceBreachLevel);
   const combatPotionSlot = Number(state.combatPotionSlot);
   const nearestEnemyDistance = Number(state.nearestEnemyDistance);
   const nearestEnemyHealth = Number(state.nearestEnemyHealth);
@@ -1156,6 +1158,8 @@ function normalizeState(state) {
     totemSlot: Number.isFinite(totemSlot) ? totemSlot : -1,
     pearlSlot: Number.isFinite(pearlSlot) ? pearlSlot : -1,
     maceSlot: Number.isFinite(maceSlot) ? maceSlot : -1,
+    breachMaceSlot: Number.isFinite(breachMaceSlot) ? breachMaceSlot : -1,
+    maceBreachLevel: Number.isFinite(maceBreachLevel) ? maceBreachLevel : 0,
     combatPotionSlot: Number.isFinite(combatPotionSlot) ? combatPotionSlot : -1,
     hotbarBlocks: Number.isFinite(hotbarBlocks) ? hotbarBlocks : 0,
     hasBlocks: Boolean(state.hasBlocks),
@@ -1280,9 +1284,10 @@ function buildMinecraftAction(objective, state = {}, sessionCtx = {}) {
   const pearlUsedRecently = s.lastPearlUseTick >= 0 && (currentTick - s.lastPearlUseTick) < pearlCooldownTicks;
   const canUsePearl = s.pearlSlot >= 0 && s.pearlCount > 0 && !pearlUsedRecently;
   const hasMace = s.maceSlot >= 0 && s.maceCount > 0;
+  const hasBreachMace = s.breachMaceSlot >= 0 && s.maceBreachLevel > 0 && s.maceCount > 0;
   const hasMaceAndElytra = hasMace && s.hasElytra;
   const enemyHasShield = s.nearestEnemyHasShield && enemyNearby;
-  const breachSwapNeeded = enemyHasShield && hasMace && s.swordSlot >= 0;
+  const breachSwapNeeded = enemyHasShield && hasBreachMace && s.swordSlot >= 0;
   const missingCombatEffects = !s.hasSpeedEffect || !s.hasStrengthEffect;
   const canPotUp = s.combatPotionSlot >= 0 && s.combatPotionCount > 0 && missingCombatEffects;
 
@@ -1379,37 +1384,34 @@ function buildMinecraftAction(objective, state = {}, sessionCtx = {}) {
     const targetDz   = hasPlayerTarget ? s.nearestEnemyDz   : (hasMobTarget ? s.nearestHostileDz   : 0);
     const targetDist = hasPlayerTarget ? s.nearestEnemyDistance : (hasMobTarget ? s.nearestHostileDistance : -1);
     const hasTarget  = targetDist > 0;
-    const targetName = s.nearestHostile || s.nearestEnemyName || 'target';
+    const targetName = s.nearestEnemyName || s.nearestHostile || 'target';
 
-    // ── Compute yaw and pitch corrections via atan2 ──────────────────────────
+    // ── Compute yaw correction via atan2 (stable lock-on) ────────────────────
     // MC yaw: 0=south(+Z), 90=west(−X), −90=east(+X), 180=north(−Z)
-    let aimYawDelta = 0, aimPitchDelta = 0;
+    let aimYawDelta = 0;
     if (hasTarget && (Math.abs(targetDx) > 0.05 || Math.abs(targetDz) > 0.05)) {
       const targetYaw = Math.atan2(-targetDx, targetDz) * (180 / Math.PI);
       let rawYaw = targetYaw - s.yaw;
-      while (rawYaw >  180) rawYaw -= 360;
+      while (rawYaw > 180) rawYaw -= 360;
       while (rawYaw <= -180) rawYaw += 360;
       aimYawDelta = clamp(rawYaw, -20, 20);
-      // Pitch: aim at ~1 m above target's feet (center mass)
-      const horiz = Math.sqrt(targetDx * targetDx + targetDz * targetDz);
-      const targetPitch = -Math.atan2(1.0, horiz) * (180 / Math.PI);
-      aimPitchDelta = clamp(targetPitch - s.pitch, -12, 12);
     }
-    const isAligned = hasEnemyInCrosshair || (hasTarget && Math.abs(aimYawDelta) < 15);
+    const isAligned = hasEnemyInCrosshair || (hasTarget && Math.abs(aimYawDelta) < 14);
+    const canStrafe = hasTarget && Math.abs(aimYawDelta) < 20 && targetDist < 4.5;
 
     action.hotbarSlot  = s.swordSlot >= 0 ? s.swordSlot : s.axeSlot;
     action.attack      = hasTarget && isAligned;
-    action.forward     = hasTarget && targetDist > 2.5 && !veryLowHp;
-    action.back        = veryLowHp || (hasTarget && targetDist < 1.5);
-    action.sprint      = hasTarget && targetDist > 3.5 && !lowHp;
-    action.left        = strafeLeft  && hasTarget;
-    action.right       = !strafeLeft && hasTarget;
+    action.forward     = hasTarget && targetDist > 2.2 && Math.abs(aimYawDelta) < 45 && !veryLowHp;
+    action.back        = veryLowHp || (hasTarget && targetDist < 1.6);
+    action.sprint      = hasTarget && targetDist > 3.3 && Math.abs(aimYawDelta) < 45 && !lowHp;
+    action.left        = strafeLeft  && canStrafe;
+    action.right       = !strafeLeft && canStrafe;
     action.jump        = isAligned && hasTarget && targetDist < 2.8 && s.onGround && (pulse % 5 === 0);
-    action.yawDelta    = hasTarget ? aimYawDelta : 9;   // steady sweep when no target visible
-    action.pitchDelta  = hasTarget ? aimPitchDelta : 0;
+    action.yawDelta    = hasTarget ? aimYawDelta : 8;   // steady scan when no target visible
+    action.pitchDelta  = 0; // disable vertical oscillation in melee
     action.durationTicks = 4;
     noteParts.push(hasTarget
-      ? `PVP: tracking ${targetName} dist=${targetDist.toFixed(1)} yawErr=${aimYawDelta.toFixed(0)}°`
+      ? `PVP: lock ${targetName} dist=${targetDist.toFixed(1)} yawErr=${aimYawDelta.toFixed(0)}°`
       : 'PVP: scanning for target.');
 
     if (!s.hasMeleeWeapon && s.focusedDistance > 0 && s.focusedDistance < 2.4) {
@@ -1459,9 +1461,9 @@ function buildMinecraftAction(objective, state = {}, sessionCtx = {}) {
 
     // Mace breach swap: if enemy has shield and we have mace, swap to mace periodically
     if (breachSwapNeeded && (pulse % 8 === 0)) {
-      action.hotbarSlot = s.maceSlot;
+      action.hotbarSlot = s.breachMaceSlot;
       action.attack = true;
-      noteParts.push('Mace breach swap: breaking enemy shield.');
+      noteParts.push(`Mace breach swap: Breach ${s.maceBreachLevel} shield break.`);
     } else if (breachSwapNeeded && pulse % 8 === 4) {
       // Swap back to sword for damage
       action.hotbarSlot = s.swordSlot;
