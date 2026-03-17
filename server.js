@@ -1073,6 +1073,10 @@ function normalizeState(state) {
   const maceSlot = Number(state.maceSlot);
   const breachMaceSlot = Number(state.breachMaceSlot);
   const maceBreachLevel = Number(state.maceBreachLevel);
+  const bowSlot = Number(state.bowSlot);
+  const windChargeSlot = Number(state.windChargeSlot);
+  const windChargeCount = Number(state.windChargeCount);
+  const shieldSlot = Number(state.shieldSlot);
   const combatPotionSlot = Number(state.combatPotionSlot);
   const nearestEnemyDistance = Number(state.nearestEnemyDistance);
   const nearestEnemyHealth = Number(state.nearestEnemyHealth);
@@ -1160,6 +1164,10 @@ function normalizeState(state) {
     maceSlot: Number.isFinite(maceSlot) ? maceSlot : -1,
     breachMaceSlot: Number.isFinite(breachMaceSlot) ? breachMaceSlot : -1,
     maceBreachLevel: Number.isFinite(maceBreachLevel) ? maceBreachLevel : 0,
+    bowSlot: Number.isFinite(bowSlot) ? bowSlot : -1,
+    windChargeSlot: Number.isFinite(windChargeSlot) ? windChargeSlot : -1,
+    windChargeCount: Number.isFinite(windChargeCount) ? windChargeCount : 0,
+    shieldSlot: Number.isFinite(shieldSlot) ? shieldSlot : -1,
     combatPotionSlot: Number.isFinite(combatPotionSlot) ? combatPotionSlot : -1,
     hotbarBlocks: Number.isFinite(hotbarBlocks) ? hotbarBlocks : 0,
     hasBlocks: Boolean(state.hasBlocks),
@@ -1375,7 +1383,11 @@ function buildMinecraftAction(objective, state = {}, sessionCtx = {}) {
   }
 
   if (mode === 'pvp') {
-    const strafeLeft = (pulse % 2) === 0;
+    // Strafe direction changes every 3 decisions (not every 1) to avoid rapid spin side-effects
+    const strafePhase = Math.floor(pulse / 3);
+    const strafeLeft = (strafePhase % 2) === 0;
+
+    const pvpDuration = 3; // durationTicks value — yawDelta is applied every tick so divide total correction by this
 
     // ── Pick best target (player first, then hostile mob) ────────────────────
     const hasMobTarget    = s.nearestHostileDistance > 0 && s.nearestHostileDistance < 20;
@@ -1388,31 +1400,109 @@ function buildMinecraftAction(objective, state = {}, sessionCtx = {}) {
 
     // ── Compute yaw correction via atan2 (stable lock-on) ────────────────────
     // MC yaw: 0=south(+Z), 90=west(−X), −90=east(+X), 180=north(−Z)
-    let aimYawDelta = 0;
+    // CRITICAL FIX: yawDelta is applied EVERY tick for durationTicks ticks.
+    // So yawDelta must be (totalCorrectionNeeded / pvpDuration) to avoid turning too far.
+    let rawYaw = 0; // total angle error to target (signed degrees)
+    let aimYawDelta = 0; // per-tick yaw correction
     if (hasTarget && (Math.abs(targetDx) > 0.05 || Math.abs(targetDz) > 0.05)) {
       const targetYaw = Math.atan2(-targetDx, targetDz) * (180 / Math.PI);
-      let rawYaw = targetYaw - s.yaw;
+      rawYaw = targetYaw - s.yaw;
       while (rawYaw > 180) rawYaw -= 360;
       while (rawYaw <= -180) rawYaw += 360;
-      aimYawDelta = clamp(rawYaw, -20, 20);
+      // Divide by pvpDuration so we turn rawYaw total, not rawYaw × pvpDuration
+      aimYawDelta = clamp(rawYaw / pvpDuration, -10, 10);
     }
-    const isAligned = hasEnemyInCrosshair || (hasTarget && Math.abs(aimYawDelta) < 14);
-    const canStrafe = hasTarget && Math.abs(aimYawDelta) < 20 && targetDist < 4.5;
+    // Use rawYaw (total error) for alignment checks, not per-tick aimYawDelta
+    const isAligned = hasEnemyInCrosshair || (hasTarget && Math.abs(rawYaw) < 25);
+    const canStrafe = hasTarget && Math.abs(rawYaw) < 30 && targetDist < 4.5;
+    const isFacing  = hasTarget && Math.abs(rawYaw) < 60; // broad facing check for movement
+
+    // Low-HP retreat: back away and eat (pearl/windcharge handled below)
+    const shouldRetreat = hasTarget && s.health <= 6 && s.health > 0;
 
     action.hotbarSlot  = s.swordSlot >= 0 ? s.swordSlot : s.axeSlot;
-    action.attack      = hasTarget && isAligned;
-    action.forward     = hasTarget && targetDist > 2.2 && Math.abs(aimYawDelta) < 45 && !veryLowHp;
-    action.back        = veryLowHp || (hasTarget && targetDist < 1.6);
-    action.sprint      = hasTarget && targetDist > 3.3 && Math.abs(aimYawDelta) < 45 && !lowHp;
-    action.left        = strafeLeft  && canStrafe;
-    action.right       = !strafeLeft && canStrafe;
-    action.jump        = isAligned && hasTarget && targetDist < 2.8 && s.onGround && (pulse % 5 === 0);
-    action.yawDelta    = hasTarget ? aimYawDelta : 8;   // steady scan when no target visible
-    action.pitchDelta  = 0; // disable vertical oscillation in melee
-    action.durationTicks = 4;
+    action.attack      = hasTarget && isAligned && targetDist < 4.0 && !shouldRetreat;
+    action.forward     = hasTarget && targetDist > 2.4 && isFacing && !shouldRetreat;
+    action.back        = shouldRetreat || (hasTarget && targetDist < 1.5);
+    action.sprint      = hasTarget && targetDist > 3.5 && isFacing && !lowHp && !shouldRetreat;
+    // Strafe: only while NOT strongly turning (use rawYaw gate) and within engagement range
+    action.left        = strafeLeft  && canStrafe && !shouldRetreat;
+    action.right       = !strafeLeft && canStrafe && !shouldRetreat;
+    action.jump        = isAligned && hasTarget && targetDist < 3.0 && s.onGround && (pulse % 4 === 0) && !shouldRetreat;
+    // When scanning with no target, rotate slowly; when targeting, apply per-tick correction
+    action.yawDelta    = hasTarget ? aimYawDelta : 6;
+    action.pitchDelta  = 0; // no vertical oscillation in melee
+    action.durationTicks = pvpDuration;
     noteParts.push(hasTarget
-      ? `PVP: lock ${targetName} dist=${targetDist.toFixed(1)} yawErr=${aimYawDelta.toFixed(0)}°`
+      ? `PVP: lock ${targetName} dist=${targetDist.toFixed(1)} err=${rawYaw.toFixed(0)}° aligned=${isAligned}`
       : 'PVP: scanning for target.');
+
+    // ── Low HP retreat: pearl away OR windcharge up + eat ──────────────────
+    if (shouldRetreat) {
+      action.forward = false;
+      action.sprint  = false;
+      action.back    = true;
+      action.attack  = false;
+      action.sneak   = false;
+      const hasWindCharge = s.windChargeSlot >= 0 && s.windChargeCount > 0;
+      if (canUsePearl) {
+        // Pearl away from enemy (throw toward safe direction)
+        action.use       = true;
+        action.hotbarSlot = s.pearlSlot;
+        action.left      = false;
+        action.right     = false;
+        noteParts.push(`Low HP pearl escape: HP=${s.health}.`);
+      } else if (hasWindCharge) {
+        // Windcharge: throw at ground to boost upward, then eat
+        action.use       = true;
+        action.hotbarSlot = s.windChargeSlot;
+        action.pitchDelta = 80; // look straight down to windcharge below you
+        noteParts.push(`Low HP windcharge escape: HP=${s.health}.`);
+      } else if (s.utilityFoodSlot >= 0 && s.food < 18) {
+        // No escape item: eat while backing up
+        action.use       = true;
+        action.hotbarSlot = s.utilityFoodSlot;
+        noteParts.push(`Low HP eating while retreating: HP=${s.health}.`);
+      } else {
+        noteParts.push(`Low HP retreating: HP=${s.health}, no escape item.`);
+      }
+    }
+
+    // ── Bow: shoot enemy when far away (> 6 blocks) ───────────────────────────
+    const hasBow = s.bowSlot >= 0;
+    const bowRangeFight = hasTarget && targetDist > 6 && !shouldRetreat;
+    if (bowRangeFight && hasBow && isAligned) {
+      action.hotbarSlot = s.bowSlot;
+      action.forward    = targetDist > 14; // keep closing gap if very far
+      action.sprint     = targetDist > 16;
+      action.back       = false;
+      action.left       = false;
+      action.right      = false;
+      // Draw-and-fire cycle: hold use for 6 decisions (6×3 ticks = 18 ticks ~= full charge at 20tps), then release
+      if (pulse % 8 < 6) {
+        action.use    = true;   // draw bow
+        action.attack = false;
+      } else {
+        action.use    = false;  // release → fires arrow
+        action.attack = false;
+      }
+      // Slight upward pitch compensation for arrow drop at distance
+      const vertLead = Math.atan2(targetDist * 0.04, 1) * (180 / Math.PI);
+      action.pitchDelta = clamp((-vertLead - s.pitch) / pvpDuration, -6, 6);
+      noteParts.push(`Bow: shooting ${targetName} at ${targetDist.toFixed(1)} blocks. ${pulse % 8 < 6 ? 'Drawing...' : 'Releasing!'}`);
+    }
+
+    // ── Shield: raise shield when enemy approaches for a melee strike ────────
+    const hasShield = s.shieldSlot >= 0;
+    const enemyAboutToStrike = hasTarget && targetDist < 2.5 && s.nearestEnemyHasMeleeWeapon;
+    // Block every other strafe window to mix offense and defense
+    if (hasShield && enemyAboutToStrike && (strafePhase % 3 === 1) && !shouldRetreat && !bowRangeFight) {
+      // Shield blocks with right-click (use key) while it is in the offhand (placed there by Java)
+      action.use    = true;
+      action.sneak  = true; // crouching while shielding
+      action.attack = false;
+      noteParts.push('Shield: blocking incoming melee strike.');
+    }
 
     if (!s.hasMeleeWeapon && s.focusedDistance > 0 && s.focusedDistance < 2.4) {
       action.back = true;
