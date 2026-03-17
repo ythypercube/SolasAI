@@ -1,6 +1,9 @@
 import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
+import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 const app = express();
 
@@ -48,6 +51,8 @@ const MAX_MESSAGE_LENGTH = Number(process.env.MAX_MESSAGE_LENGTH || 500);
 const MAX_SESSION_ID_LENGTH = Number(process.env.MAX_SESSION_ID_LENGTH || 64);
 const RATE_LIMIT_WINDOW_MS = Number(process.env.RATE_LIMIT_WINDOW_MS || 60_000);
 const RATE_LIMIT_MAX_REQUESTS = Number(process.env.RATE_LIMIT_MAX_REQUESTS || 30);
+const MC_AGENT_RATE_LIMIT_WINDOW_MS = Number(process.env.MC_AGENT_RATE_LIMIT_WINDOW_MS || 60_000);
+const MC_AGENT_RATE_LIMIT_MAX_REQUESTS = Number(process.env.MC_AGENT_RATE_LIMIT_MAX_REQUESTS || 600);
 const ENABLE_CONTENT_FILTER = String(process.env.ENABLE_CONTENT_FILTER || 'true').toLowerCase() === 'true';
 const SAFETY_REFUSAL_TEXT = process.env.SAFETY_REFUSAL_TEXT || "I can't help with that.";
 const SHOW_REASONING_SUMMARY = String(process.env.SHOW_REASONING_SUMMARY || 'false').toLowerCase() === 'true';
@@ -70,7 +75,82 @@ const API_KEYS = (process.env.API_KEYS || '')
 const REQUIRE_API_KEY = String(process.env.REQUIRE_API_KEY || (API_KEYS.length > 0 ? 'true' : 'false')).toLowerCase() === 'true';
 
 const sessions = new Map();
+const sessionFeedback = new Map();
 const rateLimits = new Map();
+const mcAgentRateLimits = new Map();
+const mcAgentSessions = new Map();
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const MC_MEMORY_FILE = process.env.MC_AGENT_MEMORY_FILE || path.join(__dirname, 'mc_agent_memory.json');
+
+function safeReadJson(filePath, fallback) {
+  try {
+    if (!fs.existsSync(filePath)) return fallback;
+    const raw = fs.readFileSync(filePath, 'utf8');
+    if (!raw.trim()) return fallback;
+    return JSON.parse(raw);
+  } catch {
+    return fallback;
+  }
+}
+
+function loadMcMemory() {
+  const data = safeReadJson(MC_MEMORY_FILE, { sessions: {} });
+  if (!data || typeof data !== 'object' || typeof data.sessions !== 'object') {
+    return;
+  }
+  for (const [sid, ctx] of Object.entries(data.sessions)) {
+    if (!sid || !ctx || typeof ctx !== 'object') continue;
+    mcAgentSessions.set(sid, ctx);
+  }
+}
+
+let mcMemoryWritePending = false;
+function scheduleMcMemorySave() {
+  if (mcMemoryWritePending) return;
+  mcMemoryWritePending = true;
+  setTimeout(() => {
+    mcMemoryWritePending = false;
+    try {
+      const sessionsObj = Object.fromEntries(mcAgentSessions.entries());
+      const payload = {
+        savedAt: Date.now(),
+        sessions: sessionsObj
+      };
+      fs.writeFileSync(MC_MEMORY_FILE, JSON.stringify(payload, null, 2), 'utf8');
+    } catch {
+      // ignore persistence errors to keep runtime stable
+    }
+  }, 500);
+}
+
+function parseEnchantGoals(text) {
+  const goals = [
+    'mending',
+    'protection 4',
+    'unbreaking 3',
+    'sharpness 5',
+    'knockback 1',
+    'looting 3',
+    'efficiency 5'
+  ];
+  const normalized = normalizeText(text).toLowerCase();
+  const wanted = goals.filter((g) => normalized.includes(g));
+  if (/\b(all enchant|all books|every book|all other enchanting books)\b/.test(normalized)) {
+    return [
+      ...new Set([
+        ...wanted,
+        'thorns 3', 'feather falling 4', 'respiration 3', 'aqua affinity',
+        'depth strider 3', 'swift sneak 3', 'fire protection 4',
+        'projectile protection 4', 'blast protection 4', 'fortune 3',
+        'silk touch', 'power 5', 'flame', 'infinity', 'punch 2',
+        'piercing 4', 'multishot', 'quick charge 3', 'riptide 3',
+        'channeling', 'impaling 5'
+      ])
+    ];
+  }
+  return wanted;
+}
 
 function getSessionMessages(sessionId) {
   if (!sessions.has(sessionId)) {
@@ -78,6 +158,43 @@ function getSessionMessages(sessionId) {
   }
   return sessions.get(sessionId);
 }
+
+function getSessionFeedback(sessionId) {
+  if (!sessionFeedback.has(sessionId)) {
+    sessionFeedback.set(sessionId, []);
+  }
+  return sessionFeedback.get(sessionId);
+}
+
+function appendSessionFeedback(sessionId, feedbackEntry) {
+  const current = getSessionFeedback(sessionId);
+  const next = [...current, feedbackEntry].slice(-5);
+  sessionFeedback.set(sessionId, next);
+}
+
+function buildSolasForwardMessage(sessionId, userMessageForModel) {
+  const history = trimHistory(getSessionMessages(sessionId), Math.min(HISTORY_LIMIT, 4));
+  const feedbackItems = getSessionFeedback(sessionId).slice(-3);
+
+  const historyText = history
+    .map((msg) => `${msg.role === 'assistant' ? 'Assistant' : 'User'}: ${normalizeText(msg.content)}`)
+    .join('\n');
+
+  const feedbackText = feedbackItems
+    .map((item, idx) => `${idx + 1}) rating=${item.rating}; improve=${item.improvement || 'n/a'}`)
+    .join('\n');
+
+  const sections = [
+    'You are answering inside TurboWarp. Improve on previous attempts instead of repeating low-quality output.',
+    feedbackText ? `Recent explicit feedback to apply:\n${feedbackText}` : '',
+    historyText ? `Recent conversation context:\n${historyText}` : '',
+    `Current user request:\n${userMessageForModel}`
+  ].filter(Boolean);
+
+  return sections.join('\n\n');
+}
+
+loadMcMemory();
 
 function trimHistory(messages, maxTurns) {
   const maxMessages = Math.max(2, maxTurns * 2);
@@ -190,6 +307,19 @@ function scratchCodingReply(userMessage) {
   const text = normalizeText(userMessage).toLowerCase();
   if (!text) return null;
 
+  if (/\b(variable|variables|set variable|change variable)\b/.test(text) && /\b(scratch|turbowarp)\b/.test(text)) {
+    return {
+      reply: [
+        'In Scratch, a variable stores data like score, health, or speed.',
+        'Quick setup:',
+        '1) Click Variables -> Make a Variable (example: `score`).',
+        '2) On game start: `set [score v] to [0]`.',
+        '3) When player earns points: `change [score v] by [1]`.',
+        '4) Use `if <(score) > (highscore)> then set [highscore v] to (score)` for best score tracking.'
+      ].join('\n')
+    };
+  }
+
   if (/\b(high ?score|hiscore|scoreboard)\b/.test(text)) {
     return {
       reply: [
@@ -227,7 +357,14 @@ function scratchCodingReply(userMessage) {
 
   if (/\b(scratch|turbowarp)\b/.test(text)) {
     return {
-      reply: 'I can help with Scratch and TurboWarp blocks, variables, lists, high scores, broadcasts, clones, and game logic. Ask a specific coding question and I will explain the steps.'
+      reply: [
+        'Scratch/TurboWarp helper mode:',
+        '1) Define one clear goal (example: "make jump with gravity").',
+        '2) Identify key variables/lists/events needed.',
+        '3) Build the smallest working script first.',
+        '4) Test result, then refine with one change at a time.',
+        'Send your exact feature and I will return block-by-block steps.'
+      ].join('\n')
     };
   }
 
@@ -560,6 +697,16 @@ function looksLowQualityReply(reply) {
   if (!text) return true;
   if (text.length < 12) return true;
 
+  const lower = text.toLowerCase();
+  if (
+    /i can help with scratch/.test(lower)
+    || /ask a specific coding question/.test(lower)
+    || /i will explain the steps/.test(lower)
+    || /variables, lists, high scores, broadcasts, clones/.test(lower)
+  ) {
+    return true;
+  }
+
   const alpha = (text.match(/[a-z]/gi) || []).length;
   const vowels = (text.match(/[aeiou]/gi) || []).length;
   const words = text.split(' ').filter(Boolean);
@@ -852,6 +999,878 @@ function parseRobotTask(userMessage) {
   return { commandStr, reply };
 }
 
+function clamp(value, min, max) {
+  return Math.min(max, Math.max(min, value));
+}
+
+function getModeFromObjective(text) {
+  if (/\b(crystal pvp|end crystal|anchor pvp|respawn anchor|totem pop|dtap|k[bB] ?2|pearl combo)\b/.test(text)) return 'crystal';
+  if (/\b(speedrun|any%|beat (the )?dragon|kill (the )?ender dragon|stronghold|end portal|eye of ender|blaze rod)\b/.test(text)) return 'speedrun';
+  if (/\b(craft|crafting|smelt|forge|recipe|anvil|enchant)\b/.test(text)) return 'craft';
+  if (/\b(protection ?4|prot ?4|villager trade|librarian|full diamond|armor progression|netherite)\b/.test(text)) return 'progression';
+  if (/\b(base|hidden base|orbital strike cannon|cannon|hide the base|underground base|duper|villager hall|stealth)\b/.test(text)) return 'base';
+  if (/\b(resource|farm|collect|get|gather|mining run|ore run|generator)\b/.test(text) && /\b(iron|redstone|diamond|gold|emerald)\b/.test(text)) return 'resource';
+  if (/\b(clutch|water bucket|mlg|save|fall clutch)\b/.test(text)) return 'clutch';
+  if (/\b(bedwars|bed war|rush bed|defend bed|bridge to bed)\b/.test(text)) return 'bedwars';
+  if (/\b(pvp|fight|combat|attack|kill|duel|combo|w tap)\b/.test(text)) return 'pvp';
+  if (/\b(build|place|bridge|tower|wall|house|base|speedbridge|godbridge|telly|telly ?bridge|tele ?bridge|andromeda|andromeda ?bridge)\b/.test(text)) return 'build';
+  return 'general';
+}
+
+function normalizeState(state) {
+  const x = Number(state.x);
+  const z = Number(state.z);
+  const hp = Number(state.health);
+  const food = Number(state.food);
+  const focusedDistance = Number(state.focusedDistance);
+  const fallDistance = Number(state.fallDistance);
+  const verticalSpeed = Number(state.verticalSpeed);
+  const horizontalSpeed = Number(state.horizontalSpeed);
+  const worldTime = Number(state.worldTime);
+  const hotbarBlocks = Number(state.hotbarBlocks);
+  const lookX = Number(state.lookX);
+  const lookY = Number(state.lookY);
+  const lookZ = Number(state.lookZ);
+  const selectedItemCount = Number(state.selectedItemCount);
+  const swordSlot = Number(state.swordSlot);
+  const axeSlot = Number(state.axeSlot);
+  const pickaxeSlot = Number(state.pickaxeSlot);
+  const blockSlot = Number(state.blockSlot);
+  const waterBucketSlot = Number(state.waterBucketSlot);
+  const utilityFoodSlot = Number(state.utilityFoodSlot);
+  const cobwebSlot = Number(state.cobwebSlot);
+  const obsidianSlot = Number(state.obsidianSlot);
+  const endCrystalSlot = Number(state.endCrystalSlot);
+  const respawnAnchorSlot = Number(state.respawnAnchorSlot);
+  const glowstoneSlot = Number(state.glowstoneSlot);
+  const totemSlot = Number(state.totemSlot);
+  const pearlSlot = Number(state.pearlSlot);
+  const maceSlot = Number(state.maceSlot);
+  const combatPotionSlot = Number(state.combatPotionSlot);
+  const nearestEnemyDistance = Number(state.nearestEnemyDistance);
+  const nearestEnemyHealth = Number(state.nearestEnemyHealth);
+  const nearestEnemyArmorPieces = Number(state.nearestEnemyArmorPieces);
+  const nearestEnemyVelX = Number(state.nearestEnemyVelX);
+  const nearestEnemyVelZ = Number(state.nearestEnemyVelZ);
+  const nearestBedDistance = Number(state.nearestBedDistance);
+  const nearestBedDefenseScore = Number(state.nearestBedDefenseScore);
+  const ironCount = Number(state.ironCount);
+  const redstoneCount = Number(state.redstoneCount);
+  const diamondCount = Number(state.diamondCount);
+  const goldCount = Number(state.goldCount);
+  const emeraldCount = Number(state.emeraldCount);
+  const netheriteIngotCount = Number(state.netheriteIngotCount);
+  const netheriteScrapCount = Number(state.netheriteScrapCount);
+  const ancientDebrisCount = Number(state.ancientDebrisCount);
+  const netheriteUpgradeTemplateCount = Number(state.netheriteUpgradeTemplateCount);
+  const enchantedBookCount = Number(state.enchantedBookCount);
+  const cobwebCount = Number(state.cobwebCount);
+  const obsidianCount = Number(state.obsidianCount);
+  const endCrystalCount = Number(state.endCrystalCount);
+  const respawnAnchorCount = Number(state.respawnAnchorCount);
+  const glowstoneCount = Number(state.glowstoneCount);
+  const totemCount = Number(state.totemCount);
+  const pearlCount = Number(state.pearlCount);
+  const maceCount = Number(state.maceCount);
+  const combatPotionCount = Number(state.combatPotionCount);
+  const nearbyDroppedTotemCount = Number(state.nearbyDroppedTotemCount);
+  const nearbyDroppedPearlCount = Number(state.nearbyDroppedPearlCount);
+  const nearbyDroppedPotionCount = Number(state.nearbyDroppedPotionCount);
+  const nearbyDroppedGappleCount = Number(state.nearbyDroppedGappleCount);
+  const nearbyDroppedCrystalCount = Number(state.nearbyDroppedCrystalCount);
+  const nearestDroppedItemDistance = Number(state.nearestDroppedItemDistance);
+  const nearestDroppedItemDx = Number(state.nearestDroppedItemDx);
+  const nearestDroppedItemDz = Number(state.nearestDroppedItemDz);
+  const blazeRodCount = Number(state.blazeRodCount);
+  const eyeOfEnderCount = Number(state.eyeOfEnderCount);
+  const flintAndSteelSlot = Number(state.flintAndSteelSlot);
+  const flintAndSteelCount = Number(state.flintAndSteelCount);
+  const strongholdEstX = Number(state.strongholdEstX);
+  const strongholdEstZ = Number(state.strongholdEstZ);
+  const villagerNearbyCount = Number(state.villagerNearbyCount);
+  const nearestHostileDistance = Number(state.nearestHostileDistance);
+  const lastPearlUseTick = Number(state.lastPearlUseTick);
+  return {
+    x: Number.isFinite(x) ? x : 0,
+    z: Number.isFinite(z) ? z : 0,
+    health: Number.isFinite(hp) ? hp : 20,
+    food: Number.isFinite(food) ? food : 20,
+    focusedDistance: Number.isFinite(focusedDistance) ? focusedDistance : -1,
+    focusedEntity: normalizeText(state.focusedEntity || '').toLowerCase(),
+    onGround: Boolean(state.onGround),
+    isSprinting: Boolean(state.isSprinting),
+    isSneaking: Boolean(state.isSneaking),
+    isTouchingWater: Boolean(state.isTouchingWater),
+    fallDistance: Number.isFinite(fallDistance) ? fallDistance : 0,
+    verticalSpeed: Number.isFinite(verticalSpeed) ? verticalSpeed : 0,
+    horizontalSpeed: Number.isFinite(horizontalSpeed) ? horizontalSpeed : 0,
+    worldTime: Number.isFinite(worldTime) ? worldTime : 0,
+    facing: normalizeText(state.facing || 'north').toLowerCase(),
+    lookX: Number.isFinite(lookX) ? lookX : 0,
+    lookY: Number.isFinite(lookY) ? lookY : 0,
+    lookZ: Number.isFinite(lookZ) ? lookZ : 1,
+    selectedItem: normalizeText(state.selectedItem || '').toLowerCase(),
+    selectedItemCount: Number.isFinite(selectedItemCount) ? selectedItemCount : 0,
+    swordSlot: Number.isFinite(swordSlot) ? swordSlot : -1,
+    axeSlot: Number.isFinite(axeSlot) ? axeSlot : -1,
+    pickaxeSlot: Number.isFinite(pickaxeSlot) ? pickaxeSlot : -1,
+    blockSlot: Number.isFinite(blockSlot) ? blockSlot : -1,
+    waterBucketSlot: Number.isFinite(waterBucketSlot) ? waterBucketSlot : -1,
+    utilityFoodSlot: Number.isFinite(utilityFoodSlot) ? utilityFoodSlot : -1,
+    cobwebSlot: Number.isFinite(cobwebSlot) ? cobwebSlot : -1,
+    obsidianSlot: Number.isFinite(obsidianSlot) ? obsidianSlot : -1,
+    endCrystalSlot: Number.isFinite(endCrystalSlot) ? endCrystalSlot : -1,
+    respawnAnchorSlot: Number.isFinite(respawnAnchorSlot) ? respawnAnchorSlot : -1,
+    glowstoneSlot: Number.isFinite(glowstoneSlot) ? glowstoneSlot : -1,
+    totemSlot: Number.isFinite(totemSlot) ? totemSlot : -1,
+    pearlSlot: Number.isFinite(pearlSlot) ? pearlSlot : -1,
+    maceSlot: Number.isFinite(maceSlot) ? maceSlot : -1,
+    combatPotionSlot: Number.isFinite(combatPotionSlot) ? combatPotionSlot : -1,
+    hotbarBlocks: Number.isFinite(hotbarBlocks) ? hotbarBlocks : 0,
+    hasBlocks: Boolean(state.hasBlocks),
+    hasWaterBucket: Boolean(state.hasWaterBucket),
+    hasMeleeWeapon: Boolean(state.hasMeleeWeapon),
+    hasElytra: Boolean(state.hasElytra),
+    ironCount: Number.isFinite(ironCount) ? ironCount : 0,
+    redstoneCount: Number.isFinite(redstoneCount) ? redstoneCount : 0,
+    diamondCount: Number.isFinite(diamondCount) ? diamondCount : 0,
+    goldCount: Number.isFinite(goldCount) ? goldCount : 0,
+    emeraldCount: Number.isFinite(emeraldCount) ? emeraldCount : 0,
+    netheriteIngotCount: Number.isFinite(netheriteIngotCount) ? netheriteIngotCount : 0,
+    netheriteScrapCount: Number.isFinite(netheriteScrapCount) ? netheriteScrapCount : 0,
+    ancientDebrisCount: Number.isFinite(ancientDebrisCount) ? ancientDebrisCount : 0,
+    netheriteUpgradeTemplateCount: Number.isFinite(netheriteUpgradeTemplateCount) ? netheriteUpgradeTemplateCount : 0,
+    enchantedBookCount: Number.isFinite(enchantedBookCount) ? enchantedBookCount : 0,
+    cobwebCount: Number.isFinite(cobwebCount) ? cobwebCount : 0,
+    obsidianCount: Number.isFinite(obsidianCount) ? obsidianCount : 0,
+    endCrystalCount: Number.isFinite(endCrystalCount) ? endCrystalCount : 0,
+    respawnAnchorCount: Number.isFinite(respawnAnchorCount) ? respawnAnchorCount : 0,
+    glowstoneCount: Number.isFinite(glowstoneCount) ? glowstoneCount : 0,
+    totemCount: Number.isFinite(totemCount) ? totemCount : 0,
+    pearlCount: Number.isFinite(pearlCount) ? pearlCount : 0,
+    maceCount: Number.isFinite(maceCount) ? maceCount : 0,
+    combatPotionCount: Number.isFinite(combatPotionCount) ? combatPotionCount : 0,
+    hasSpeedEffect: Boolean(state.hasSpeedEffect),
+    hasStrengthEffect: Boolean(state.hasStrengthEffect),
+    nearbyDroppedTotemCount: Number.isFinite(nearbyDroppedTotemCount) ? nearbyDroppedTotemCount : 0,
+    nearbyDroppedPearlCount: Number.isFinite(nearbyDroppedPearlCount) ? nearbyDroppedPearlCount : 0,
+    nearbyDroppedPotionCount: Number.isFinite(nearbyDroppedPotionCount) ? nearbyDroppedPotionCount : 0,
+    nearbyDroppedGappleCount: Number.isFinite(nearbyDroppedGappleCount) ? nearbyDroppedGappleCount : 0,
+    nearbyDroppedCrystalCount: Number.isFinite(nearbyDroppedCrystalCount) ? nearbyDroppedCrystalCount : 0,
+    nearestDroppedItemDistance: Number.isFinite(nearestDroppedItemDistance) ? nearestDroppedItemDistance : -1,
+    nearestDroppedItemDx: Number.isFinite(nearestDroppedItemDx) ? nearestDroppedItemDx : 0,
+    nearestDroppedItemDz: Number.isFinite(nearestDroppedItemDz) ? nearestDroppedItemDz : 0,
+    dimensionId: normalizeText(state.dimensionId || 'overworld').toLowerCase(),
+    blazeRodCount: Number.isFinite(blazeRodCount) ? blazeRodCount : 0,
+    eyeOfEnderCount: Number.isFinite(eyeOfEnderCount) ? eyeOfEnderCount : 0,
+    flintAndSteelSlot: Number.isFinite(flintAndSteelSlot) ? flintAndSteelSlot : -1,
+    flintAndSteelCount: Number.isFinite(flintAndSteelCount) ? flintAndSteelCount : 0,
+    strongholdEstX: Number.isFinite(strongholdEstX) ? strongholdEstX : 0,
+    strongholdEstZ: Number.isFinite(strongholdEstZ) ? strongholdEstZ : 0,
+    strongholdTriangulated: Boolean(state.strongholdTriangulated),
+    villagerNearbyCount: Number.isFinite(villagerNearbyCount) ? villagerNearbyCount : 0,
+    nearestHostile: normalizeText(state.nearestHostile || '').toLowerCase(),
+    nearestHostileDistance: Number.isFinite(nearestHostileDistance) ? nearestHostileDistance : -1,
+    nearestEnemyName: normalizeText(state.nearestEnemyName || ''),
+    nearestEnemyDistance: Number.isFinite(nearestEnemyDistance) ? nearestEnemyDistance : -1,
+    nearestEnemyHealth: Number.isFinite(nearestEnemyHealth) ? nearestEnemyHealth : 0,
+    nearestEnemyMainItem: normalizeText(state.nearestEnemyMainItem || '').toLowerCase(),
+    nearestEnemyArmorPieces: Number.isFinite(nearestEnemyArmorPieces) ? nearestEnemyArmorPieces : 0,
+    nearestEnemyHasMeleeWeapon: Boolean(state.nearestEnemyHasMeleeWeapon),
+    nearestEnemyHasShield: Boolean(state.nearestEnemyHasShield),
+    nearestEnemyVelX: Number.isFinite(nearestEnemyVelX) ? nearestEnemyVelX : 0,
+    nearestEnemyVelZ: Number.isFinite(nearestEnemyVelZ) ? nearestEnemyVelZ : 0,
+    bedNearby: Boolean(state.bedNearby),
+    nearestBedDistance: Number.isFinite(nearestBedDistance) ? nearestBedDistance : -1,
+    nearestBedDefenseScore: Number.isFinite(nearestBedDefenseScore) ? nearestBedDefenseScore : 0,
+    nearestBedDefenseBlock: normalizeText(state.nearestBedDefenseBlock || '').toLowerCase(),
+    lastPearlUseTick: Number.isFinite(lastPearlUseTick) ? lastPearlUseTick : -1
+  };
+}
+
+function buildMinecraftAction(objective, state = {}, sessionCtx = {}) {
+  const text = normalizeText(objective).toLowerCase();
+  const enchantGoals = parseEnchantGoals(text);
+  const mode = getModeFromObjective(text);
+  const s = normalizeState(state);
+  const action = {
+    forward: false,
+    back: false,
+    left: false,
+    right: false,
+    jump: false,
+    sprint: false,
+    sneak: false,
+    attack: false,
+    use: false,
+    hotbarSlot: -1,
+    yawDelta: 0,
+    pitchDelta: 0,
+    moveAngle: null,
+    durationTicks: 8
+  };
+
+  const noteParts = [];
+  const pulse = sessionCtx.tickCounter || 0;
+  const hasEnemyInCrosshair = /player|zombie|skeleton|creeper|spider|enderman|villager/i.test(s.focusedEntity);
+  const lowHp = s.health <= 8;
+  const veryLowHp = s.health <= 5;
+  const edgeRisk = s.fallDistance > 2.2 || (!s.onGround && s.verticalSpeed < -0.4);
+  const hasClutchUtility = s.hasWaterBucket || s.hasBlocks;
+  const enemyNearby = s.nearestEnemyDistance > 0 && s.nearestEnemyDistance < 8;
+  const enemyVeryClose = s.nearestEnemyDistance > 0 && s.nearestEnemyDistance < 3;
+  const severeDanger = s.health <= 3 || (enemyNearby && s.health <= 5 && s.nearestEnemyDistance < 3);
+  const enemyGearAdvantage = s.nearestEnemyArmorPieces >= 3 && !s.hasMeleeWeapon;
+  const enemyUsingCrystals = /end_crystal|respawn_anchor|glowstone/.test(s.nearestEnemyMainItem || '');
+  const crystalSpamThreat = enemyNearby && (enemyUsingCrystals || (mode === 'crystal' && s.health <= 13));
+  const canSafeAnchor = s.respawnAnchorSlot >= 0 && s.glowstoneSlot >= 0 && s.respawnAnchorCount > 0 && s.glowstoneCount > 0;
+  const inventoryValue = s.ironCount + (s.redstoneCount * 0.2) + (s.goldCount * 2) + (s.diamondCount * 4) + (s.emeraldCount * 5);
+  const hasCrystalKit = s.obsidianCount > 0 && s.endCrystalCount > 0;
+  const wantsNorth = /\bnorth\b/.test(text);
+  const wantsSouth = /\bsouth\b/.test(text);
+  const wantsEast = /\beast\b/.test(text);
+  const wantsWest = /\bwest\b/.test(text);
+  const wantsTellyBridge = /\b(telly|telly ?bridge|tele ?bridge)\b/.test(text);
+  const wantsAndromedaBridge = /\b(andromeda|andromeda ?bridge)\b/.test(text);
+  const wantsMobBlockDefense = /\b(block mobs|block mob|anti ?mob|wall off mobs|box up|mobs? from hitting)\b/.test(text);
+  const hostilePressure = s.nearestHostileDistance > 0 && s.nearestHostileDistance < 3.5;
+  const shouldBlockMobs = s.hasBlocks && hostilePressure && (mode === 'build' || mode === 'bedwars' || wantsMobBlockDefense);
+
+  // Pearl cooldown & mace tactics
+  const pearlCooldownTicks = 100; // ~5 seconds at 20 TPS, prevent spam
+  const currentTick = pulse;
+  const pearlUsedRecently = s.lastPearlUseTick >= 0 && (currentTick - s.lastPearlUseTick) < pearlCooldownTicks;
+  const canUsePearl = s.pearlSlot >= 0 && s.pearlCount > 0 && !pearlUsedRecently;
+  const hasMace = s.maceSlot >= 0 && s.maceCount > 0;
+  const hasMaceAndElytra = hasMace && s.hasElytra;
+  const enemyHasShield = s.nearestEnemyHasShield && enemyNearby;
+  const breachSwapNeeded = enemyHasShield && hasMace && s.swordSlot >= 0;
+  const missingCombatEffects = !s.hasSpeedEffect || !s.hasStrengthEffect;
+  const canPotUp = s.combatPotionSlot >= 0 && s.combatPotionCount > 0 && missingCombatEffects;
+
+  const needsTotem = s.totemCount < 2;
+  const needsPearls = s.pearlCount < 2;
+  const needsPotions = s.combatPotionCount < 1;
+  const needsCrystalKitLoot = (mode === 'crystal') && (s.endCrystalCount < 8 || s.obsidianCount < 8);
+  const nearbyNeededLoot =
+    ((needsTotem ? s.nearbyDroppedTotemCount : 0)
+    + (needsPearls ? s.nearbyDroppedPearlCount : 0)
+    + (needsPotions ? s.nearbyDroppedPotionCount : 0)
+    + (needsCrystalKitLoot ? s.nearbyDroppedCrystalCount : 0)
+    + s.nearbyDroppedGappleCount);
+  const shouldLootNow = nearbyNeededLoot > 0 && s.nearestDroppedItemDistance > 0 && s.nearestDroppedItemDistance < 12 && !enemyVeryClose && !severeDanger;
+
+  const lootCross = (s.lookX * s.nearestDroppedItemDz) - (s.lookZ * s.nearestDroppedItemDx);
+  const lootYaw = clamp(Math.round(lootCross * 6), -7, 7);
+
+  if (enemyNearby) {
+    const lateralLead = (s.lookX * s.nearestEnemyVelZ) - (s.lookZ * s.nearestEnemyVelX);
+    const predictiveYaw = clamp(Math.round(lateralLead * 35), -9, 9);
+    if (predictiveYaw !== 0) {
+      action.yawDelta = predictiveYaw;
+      noteParts.push('Enemy movement prediction active.');
+    }
+  }
+
+  if (wantsNorth && s.facing !== 'north') action.yawDelta = 6;
+  if (wantsSouth && s.facing !== 'south') action.yawDelta = 6;
+  if (wantsEast && s.facing !== 'east') action.yawDelta = 6;
+  if (wantsWest && s.facing !== 'west') action.yawDelta = 6;
+
+  if (/\b(stop|halt|pause|wait|stand still|freeze)\b/.test(text)) {
+    noteParts.push('Holding still.');
+    action.durationTicks = 6;
+    return { action, note: noteParts.join(' '), mode };
+  }
+
+  if (lowHp && s.utilityFoodSlot >= 0) {
+    action.use = true;
+    action.hotbarSlot = s.utilityFoodSlot;
+    action.back = true;
+    action.forward = false;
+    action.sprint = false;
+    action.durationTicks = Math.min(action.durationTicks, 6);
+    noteParts.push('Low HP healing: eating food before re-engage.');
+  }
+
+  if (mode === 'clutch' || edgeRisk) {
+    action.sneak = true;
+    action.back = true;
+    action.use = hasClutchUtility;
+    action.hotbarSlot = s.hasWaterBucket ? s.waterBucketSlot : s.blockSlot;
+    action.pitchDelta = s.verticalSpeed < -0.2 ? 10 : 3;
+    action.durationTicks = 4;
+    noteParts.push(hasClutchUtility
+      ? 'Clutch safety: reduce fall risk and place utility.'
+      : 'Clutch safety: no clutch utility in hotbar, prioritizing back/sneak recovery.');
+  }
+
+  if (mode === 'bedwars') {
+    if (hasEnemyInCrosshair && s.focusedDistance > 0 && s.focusedDistance < 3.4) {
+      action.attack = true;
+      action.sprint = true;
+      action.forward = true;
+      action.hotbarSlot = s.swordSlot >= 0 ? s.swordSlot : s.axeSlot;
+      action.durationTicks = 6;
+      noteParts.push('Bedwars combat engage.');
+    } else {
+      action.forward = true;
+      action.sprint = !lowHp;
+      action.use = s.hasBlocks && (/\b(bridge|bed|rush|defend|place|block in)\b/.test(text) || s.horizontalSpeed < 0.1);
+      action.sneak = action.use || (!s.hasBlocks && /\b(bridge|rush)\b/.test(text));
+      action.hotbarSlot = action.use ? s.blockSlot : (s.swordSlot >= 0 ? s.swordSlot : s.axeSlot);
+      action.durationTicks = 8;
+      noteParts.push(s.hasBlocks
+        ? `Bedwars objective push: route and place blocks (${s.hotbarBlocks} blocks hotbar).`
+        : 'Bedwars objective push: no blocks in hotbar, moving to regroup/loot.');
+
+      if (s.bedNearby && s.nearestBedDistance >= 0 && s.nearestBedDistance < 10) {
+        if (s.nearestBedDefenseScore >= 30) {
+          noteParts.push(`Bed defense appears heavy (${s.nearestBedDefenseBlock || 'mixed'}). Circling before commit.`);
+          action.left = (pulse % 2) === 0;
+          action.right = !action.left;
+          action.sprint = false;
+        } else {
+          noteParts.push('Bed defense appears light. Faster bed break path.');
+          action.forward = true;
+          action.sprint = true;
+        }
+      }
+    }
+
+    if (pulse % 3 === 0) action.yawDelta = (pulse % 2 === 0) ? 4 : -4;
+  }
+
+  if (mode === 'pvp') {
+    const strafeLeft = (pulse % 2) === 0;
+    action.attack = true;
+    action.forward = !veryLowHp;
+    action.back = veryLowHp;
+    action.sprint = !lowHp;
+    action.hotbarSlot = s.swordSlot >= 0 ? s.swordSlot : s.axeSlot;
+    action.jump = hasEnemyInCrosshair && s.focusedDistance > 0 && s.focusedDistance < 2.8 && (pulse % 5 === 0);
+    action.left = strafeLeft;
+    action.right = !strafeLeft;
+    action.durationTicks = 5;
+
+    if (!s.hasMeleeWeapon && s.focusedDistance > 0 && s.focusedDistance < 2.4) {
+      action.back = true;
+      action.forward = false;
+      action.sprint = false;
+      noteParts.push('PVP fallback: no melee weapon in hotbar, spacing to reduce damage.');
+    }
+
+    if (enemyGearAdvantage && !hasEnemyInCrosshair) {
+      action.back = true;
+      action.forward = false;
+      action.sprint = false;
+      noteParts.push('Enemy gear advantage detected. Disengaging to safer angle.');
+    }
+
+    if (crystalSpamThreat) {
+      if (canUsePearl && severeDanger) {
+        action.attack = false;
+        action.use = true;
+        action.hotbarSlot = s.pearlSlot;
+        action.back = true;
+        action.forward = false;
+        action.left = false;
+        action.right = false;
+        action.sprint = false;
+        action.sneak = true;
+        action.durationTicks = 4;
+        noteParts.push('Severe danger + crystal spam: pearling away to escape.');
+      } else if (canSafeAnchor) {
+        action.attack = false;
+        action.use = true;
+        action.hotbarSlot = (pulse % 2 === 0) ? s.respawnAnchorSlot : s.glowstoneSlot;
+        action.back = true;
+        action.forward = false;
+        action.left = false;
+        action.right = false;
+        action.sprint = false;
+        action.sneak = true;
+        action.durationTicks = 4;
+        noteParts.push('Crystal spam detected: safe-anchor defensive cycle.');
+      } else if (pearlUsedRecently) {
+        noteParts.push('Crystal spam: pearl in cooldown, prioritizing survival.');
+      }
+    }
+
+    if (hasEnemyInCrosshair && s.focusedDistance > 0) {
+      if (s.focusedDistance > 3.2) action.forward = true;
+      if (s.focusedDistance < 1.8) {
+        action.back = true;
+        action.forward = false;
+      }
+      action.yawDelta = clamp((pulse % 3) - 1, -1, 1);
+    } else {
+      action.yawDelta = (pulse % 2 === 0) ? 6 : -6;
+    }
+
+    // Mace breach swap: if enemy has shield and we have mace, swap to mace periodically
+    if (breachSwapNeeded && (pulse % 8 === 0)) {
+      action.hotbarSlot = s.maceSlot;
+      action.attack = true;
+      noteParts.push('Mace breach swap: breaking enemy shield.');
+    } else if (breachSwapNeeded && pulse % 8 === 4) {
+      // Swap back to sword for damage
+      action.hotbarSlot = s.swordSlot;
+      action.attack = true;
+      noteParts.push('Attribute swap: back to sword for enhanced damage.');
+    }
+
+    // Elytra + mace aerial combat
+    if (hasMaceAndElytra && !s.onGround && s.health > 6) {
+      action.attack = true;
+      action.hotbarSlot = s.maceSlot;
+      action.forward = true;
+      action.durationTicks = 6;
+      noteParts.push('Elytra-mace aerial dive: breaching with height advantage.');
+    }
+
+    noteParts.push('PVP mode: strafing, spacing, and timed attacks.');
+
+    if (/\b(web|cobweb|web trap)\b/.test(text) && s.cobwebSlot >= 0 && s.cobwebCount > 0 && enemyVeryClose) {
+      action.use = true;
+      action.hotbarSlot = s.cobwebSlot;
+      action.sneak = true;
+      action.durationTicks = 4;
+      noteParts.push('Web trap attempt active.');
+    }
+
+    if (/\b(crit|critical|crit out)\b/.test(text)) {
+      action.jump = true;
+      action.attack = true;
+      action.hotbarSlot = s.swordSlot >= 0 ? s.swordSlot : s.axeSlot;
+      noteParts.push('Critical-hit jump timing active.');
+    }
+
+    if (canPotUp && !enemyVeryClose && !severeDanger && !shouldLootNow && pulse % 5 === 0) {
+      action.attack = false;
+      action.use = true;
+      action.sneak = true;
+      action.sprint = false;
+      action.forward = false;
+      action.back = true;
+      action.hotbarSlot = s.combatPotionSlot;
+      action.durationTicks = 5;
+      noteParts.push('PVP upkeep: potting for missing combat effects.');
+    } else if (shouldLootNow && !severeDanger) {
+      action.attack = false;
+      action.use = false;
+      action.forward = true;
+      action.sprint = true;
+      action.back = false;
+      action.left = false;
+      action.right = false;
+      action.jump = (pulse % 9 === 0);
+      action.yawDelta = lootYaw;
+      action.durationTicks = 6;
+      noteParts.push('PVP loot pickup: collecting needed dropped items.');
+    }
+  }
+
+  if (mode === 'crystal') {
+    action.sneak = true;
+    action.sprint = false;
+    action.durationTicks = 4;
+
+    if (crystalSpamThreat) {
+      if (canUsePearl && severeDanger) {
+        action.hotbarSlot = s.pearlSlot;
+        action.use = true;
+        action.attack = false;
+        action.back = true;
+        action.forward = false;
+        action.left = false;
+        action.right = false;
+        noteParts.push('Severe danger + crystal spam: pearl escape.');
+      } else if (canSafeAnchor) {
+        action.hotbarSlot = (pulse % 2 === 0) ? s.respawnAnchorSlot : s.glowstoneSlot;
+        action.use = true;
+        action.attack = false;
+        action.back = true;
+        action.forward = false;
+        action.left = false;
+        action.right = false;
+        noteParts.push('Crystal spam pressure: safe-anchor hold.');
+      }
+    } else if (s.totemSlot >= 0 && s.health <= 10) {
+      action.hotbarSlot = s.totemSlot;
+      action.use = true;
+      noteParts.push('Totem safety priority active.');
+    } else if (hasCrystalKit && s.obsidianSlot >= 0 && s.endCrystalSlot >= 0) {
+      if (pulse % 2 === 0) {
+        action.hotbarSlot = s.obsidianSlot;
+        action.use = true;
+        noteParts.push('Crystal setup: placing obsidian.');
+      } else {
+        action.hotbarSlot = s.endCrystalSlot;
+        action.use = true;
+        action.attack = true;
+        noteParts.push('Crystal detonation cycle active.');
+      }
+    } else if (s.respawnAnchorSlot >= 0 && s.glowstoneSlot >= 0 && s.respawnAnchorCount > 0 && s.glowstoneCount > 0) {
+      action.hotbarSlot = (pulse % 2 === 0) ? s.respawnAnchorSlot : s.glowstoneSlot;
+      action.use = true;
+      noteParts.push('Anchor PVP cycle active.');
+    } else {
+      action.forward = true;
+      action.hotbarSlot = s.pearlSlot >= 0 ? s.pearlSlot : s.swordSlot;
+      noteParts.push('Crystal kit incomplete: repositioning/looting.');
+    }
+
+    if (enemyNearby && canUsePearl && s.health <= 3) {
+      action.hotbarSlot = s.pearlSlot;
+      action.use = true;
+      action.back = true;
+      noteParts.push('Critical danger: emergency pearl escape.');
+    }
+
+    if (canPotUp && !enemyVeryClose && !severeDanger && !crystalSpamThreat && pulse % 5 === 0) {
+      action.hotbarSlot = s.combatPotionSlot;
+      action.use = true;
+      action.attack = false;
+      action.back = true;
+      action.forward = false;
+      action.sprint = false;
+      action.sneak = true;
+      action.durationTicks = 5;
+      noteParts.push('Crystal upkeep: potting for missing combat effects.');
+    } else if (shouldLootNow && !crystalSpamThreat && !severeDanger) {
+      action.attack = false;
+      action.use = false;
+      action.forward = true;
+      action.back = false;
+      action.sprint = true;
+      action.left = false;
+      action.right = false;
+      action.yawDelta = lootYaw;
+      action.durationTicks = 6;
+      noteParts.push('Crystal loot pickup: collecting needed dropped items.');
+    }
+  }
+
+  if (mode === 'craft') {
+    action.forward = true;
+    action.sprint = false;
+    action.durationTicks = 8;
+    action.hotbarSlot = s.pickaxeSlot >= 0 ? s.pickaxeSlot : s.axeSlot;
+    noteParts.push('Crafting mode: gathering materials and navigating to stations.');
+
+    if (s.ironCount >= 24 && s.diamondCount < 3) {
+      noteParts.push('Priority: iron tools/armor then diamond progression.');
+    }
+    if (/\b(netherite|upgrade|smithing template)\b/.test(text)) {
+      if (s.netheriteUpgradeTemplateCount <= 0) {
+        noteParts.push('Netherite path: obtain netherite upgrade smithing template first.');
+      } else {
+        noteParts.push('Netherite path: combine debris→scrap→ingot, then smithing upgrade.');
+      }
+    }
+  }
+
+  if (mode === 'progression') {
+    action.forward = true;
+    action.sprint = false;
+    action.durationTicks = 8;
+    action.hotbarSlot = s.utilityFoodSlot >= 0 ? s.utilityFoodSlot : s.swordSlot;
+    noteParts.push('Progression mode: villager-trade and enchant route for Prot IV diamond set.');
+
+    if (enchantGoals.length > 0) {
+      noteParts.push(`Enchant targets: ${enchantGoals.join(', ')}.`);
+    } else {
+      noteParts.push('Enchant targets: mending, prot IV, unbreaking III, sharpness V, efficiency V, looting III, knockback I.');
+    }
+
+    if (s.enchantedBookCount < 6) {
+      noteParts.push('Book stock low: prioritize librarian rerolls and trade cycle.');
+    }
+    if (s.diamondCount >= 24 && s.netheriteIngotCount < 4) {
+      noteParts.push('Upgrade path: craft full diamond first, then netherite components.');
+    }
+    if (s.netheriteUpgradeTemplateCount <= 0) {
+      noteParts.push('Missing netherite upgrade template. Route to bastion/duped template workflow.');
+    }
+
+    if (s.villagerNearbyCount > 0) {
+      action.use = true;
+      noteParts.push('Villagers nearby: engage trading loop for books.');
+    }
+  }
+
+  if (mode === 'base') {
+    action.forward = true;
+    action.sneak = true;
+    action.sprint = false;
+    action.durationTicks = 9;
+    action.hotbarSlot = s.blockSlot;
+    action.use = s.hasBlocks;
+    noteParts.push('Stealth base mode: underground construction and concealment.');
+
+    if (/\b(duper|orbital strike cannon|cannon)\b/.test(text)) {
+      noteParts.push('Cannon build plan: gather redstone/obsidian first, then conceal terrain shell.');
+      if (s.redstoneCount < 64) noteParts.push('Need redstone stockpile before cannon core.');
+      if (s.obsidianCount < 32) noteParts.push('Need additional obsidian for blast-safe internals.');
+      if (s.hasBlocks) noteParts.push('Terrain masking active: place natural-looking cover layers.');
+    }
+
+    if (s.villagerNearbyCount > 0) {
+      noteParts.push('Villager integration: secure breeder/trading hall inside hidden perimeter.');
+    }
+  }
+
+  if (mode === 'build') {
+    const bridging = /\b(bridge|speedbridge|godbridge|rush)\b/.test(text) || wantsTellyBridge || wantsAndromedaBridge;
+    action.use = s.hasBlocks;
+    action.hotbarSlot = s.blockSlot;
+    action.sneak = bridging || /\b(edge|safe|careful)\b/.test(text);
+    action.forward = bridging;
+    action.jump = /\b(tower|up|stairs)\b/.test(text) && pulse % 3 === 0;
+    action.pitchDelta = bridging ? 6 : 0;
+    action.yawDelta = bridging ? ((pulse % 2 === 0) ? 2 : -2) : 0;
+    action.durationTicks = bridging ? 5 : 8;
+
+    if (wantsTellyBridge && s.hasBlocks) {
+      action.forward = true;
+      action.sprint = true;
+      action.use = true;
+      action.jump = (pulse % 2 === 0);
+      action.sneak = (pulse % 4 === 0);
+      action.pitchDelta = 8;
+      action.yawDelta = (pulse % 2 === 0) ? 3 : -3;
+      action.durationTicks = 3;
+      noteParts.push('Telly bridge routine: sprint-jump placement cadence active.');
+    } else if (wantsAndromedaBridge && s.hasBlocks) {
+      const strafeRight = (pulse % 4) < 2;
+      action.forward = true;
+      action.sprint = true;
+      action.use = true;
+      action.jump = (pulse % 3 !== 1);
+      action.sneak = (pulse % 3 === 0);
+      action.left = !strafeRight;
+      action.right = strafeRight;
+      action.pitchDelta = 7;
+      action.yawDelta = strafeRight ? 3 : -3;
+      action.durationTicks = 4;
+      noteParts.push('Andromeda bridge routine: diagonal strafe-place rhythm active.');
+    } else {
+      noteParts.push(s.hasBlocks
+        ? `Build mode: controlled placement and bridge safety (${s.hotbarBlocks} blocks hotbar).`
+        : 'Build mode: no blocks detected, moving to gather resources.');
+    }
+  }
+
+  if (mode === 'speedrun') {
+    const inNether = s.dimensionId === 'nether';
+    const inEnd = s.dimensionId === 'end';
+    const inOverworld = !inNether && !inEnd;
+    const hasEnoughEyes = s.eyeOfEnderCount >= 12;
+    const hasNetherEntryTool = s.flintAndSteelCount > 0 && s.flintAndSteelSlot >= 0;
+
+    action.durationTicks = 5;
+    action.sprint = true;
+    action.forward = true;
+    action.jump = s.horizontalSpeed < 0.08;
+
+    if (inEnd) {
+      action.attack = hasEnemyInCrosshair || /ender_dragon|end_crystal|enderman/.test(s.focusedEntity || '');
+      action.hotbarSlot = s.swordSlot >= 0 ? s.swordSlot : s.axeSlot;
+      noteParts.push('Speedrun phase: The End. Fighting dragon, controlling crystal pressure, and closing out run.');
+    } else if (inNether) {
+      if (s.blazeRodCount < 6) {
+        action.attack = hasEnemyInCrosshair || /blaze|wither_skeleton/.test(s.focusedEntity || '') || /blaze/.test(s.nearestHostile || '');
+        action.hotbarSlot = s.swordSlot >= 0 ? s.swordSlot : s.axeSlot;
+        noteParts.push('Speedrun phase: Nether rods. Hunting blazes until at least 6 rods secured.');
+      } else if (s.pearlCount < 12 && s.eyeOfEnderCount < 12) {
+        action.hotbarSlot = s.swordSlot >= 0 ? s.swordSlot : s.axeSlot;
+        noteParts.push('Speedrun phase: Nether pearls route. Need more pearl/eye count before portal-ready.');
+      } else {
+        action.hotbarSlot = hasNetherEntryTool ? s.flintAndSteelSlot : (s.blockSlot >= 0 ? s.blockSlot : s.swordSlot);
+        action.use = hasNetherEntryTool && pulse % 5 === 0;
+        noteParts.push('Speedrun phase: Exit Nether. Returning to overworld for triangulation and stronghold travel.');
+      }
+    } else if (inOverworld) {
+      if (s.blazeRodCount <= 0) {
+        action.hotbarSlot = s.axeSlot >= 0 ? s.axeSlot : s.pickaxeSlot;
+        action.attack = /log|wood|tree/.test(s.focusedEntity || '');
+        noteParts.push('Speedrun phase: Early game overworld setup. Routing for tools, food, lava, and nether entry.');
+      } else if (!s.strongholdTriangulated) {
+        action.hotbarSlot = s.swordSlot >= 0 ? s.swordSlot : s.blockSlot;
+        noteParts.push('Stronghold calc: throw eye once, run ~150-250 blocks, throw second eye for triangulation.');
+      } else {
+        const dx = s.strongholdEstX - s.x;
+        const dz = s.strongholdEstZ - s.z;
+        const strongholdDist = Math.sqrt((dx * dx) + (dz * dz));
+        const strongholdCross = (s.lookX * dz) - (s.lookZ * dx);
+        const strongholdDot = (s.lookX * dx) + (s.lookZ * dz);
+        const relativeMoveAngle = Math.atan2(strongholdCross, strongholdDot) * (180 / Math.PI);
+        const strongholdYaw = clamp(Math.round(strongholdCross * 4), -8, 8);
+
+        action.hotbarSlot = s.blockSlot >= 0 ? s.blockSlot : (s.swordSlot >= 0 ? s.swordSlot : s.pickaxeSlot);
+        action.yawDelta = strongholdYaw;
+        action.moveAngle = clamp(relativeMoveAngle, -180, 180);
+        action.sneak = edgeRisk;
+
+        if (strongholdDist < 24 && s.eyeOfEnderCount > 0) {
+          action.use = pulse % 4 === 0;
+          noteParts.push(`Stronghold route: at target zone near ~${s.strongholdEstX}, ~${s.strongholdEstZ}; probing portal staircase.`);
+        } else {
+          noteParts.push(`Stronghold route: heading to ~${s.strongholdEstX}, ~${s.strongholdEstZ} (dist ${Math.round(strongholdDist)}).`);
+        }
+
+        if (hasEnoughEyes) {
+          noteParts.push('Portal-ready check: eye count is sufficient for activation if frame RNG allows.');
+        }
+      }
+    }
+
+    if (lowHp && s.utilityFoodSlot >= 0) {
+      action.hotbarSlot = s.utilityFoodSlot;
+      action.use = true;
+      action.sprint = false;
+      noteParts.push('Speedrun safety: healing before next split to avoid run-ending death.');
+    }
+  }
+
+  if (mode === 'general') {
+    action.forward = true;
+    action.sprint = /\b(run|sprint|fast)\b/.test(text) && !lowHp;
+    action.attack = /\b(mine|dig|break|chop|harvest)\b/.test(text);
+    action.use = /\b(place|build|use|block)\b/.test(text);
+    action.hotbarSlot = action.use ? s.blockSlot : (action.attack ? (s.pickaxeSlot >= 0 ? s.pickaxeSlot : s.axeSlot) : -1);
+    action.durationTicks = 8;
+    if (pulse % 4 === 0) action.yawDelta = (pulse % 2 === 0) ? 4 : -4;
+    noteParts.push('General mode: exploring objective path.');
+  }
+
+  if (mode === 'resource') {
+    const wantsIron = /\biron\b/.test(text);
+    const wantsRedstone = /\bredstone\b/.test(text);
+    const wantsDiamond = /\bdiamond\b/.test(text);
+    const wantsGold = /\bgold\b/.test(text);
+    const wantsEmerald = /\bemerald\b/.test(text);
+
+    const targetReached = (wantsIron && s.ironCount >= 20)
+      || (wantsRedstone && s.redstoneCount >= 32)
+      || (wantsDiamond && s.diamondCount >= 4)
+      || (wantsGold && s.goldCount >= 12)
+      || (wantsEmerald && s.emeraldCount >= 2);
+
+    if (enemyNearby || lowHp || inventoryValue >= 24) {
+      action.back = true;
+      action.forward = false;
+      action.sneak = true;
+      action.sprint = false;
+      action.durationTicks = 6;
+      action.hotbarSlot = s.utilityFoodSlot >= 0 ? s.utilityFoodSlot : s.blockSlot;
+      if (s.utilityFoodSlot >= 0 && lowHp) {
+        action.use = true;
+      }
+      noteParts.push('Resource safety protocol: retreating with loot to avoid death.');
+    } else if (targetReached) {
+      action.back = true;
+      action.forward = false;
+      action.sprint = true;
+      action.durationTicks = 6;
+      action.hotbarSlot = s.utilityFoodSlot >= 0 ? s.utilityFoodSlot : s.blockSlot;
+      noteParts.push('Resource target reached. Returning safely.');
+    } else {
+      action.forward = true;
+      action.sprint = false;
+      action.jump = s.horizontalSpeed < 0.07;
+      action.sneak = edgeRisk || (s.fallDistance > 0.5);
+      action.durationTicks = 7;
+      action.hotbarSlot = wantsRedstone || wantsDiamond ? s.pickaxeSlot : s.blockSlot;
+      noteParts.push('Resource route: cautious collection with survival priority.');
+    }
+  }
+
+  if (s.nearestHostileDistance > 0 && s.nearestHostileDistance < 8) {
+    if (shouldBlockMobs && s.blockSlot >= 0) {
+      action.attack = false;
+      action.use = true;
+      action.hotbarSlot = s.blockSlot;
+      action.sneak = true;
+      action.back = true;
+      action.forward = false;
+      action.left = (pulse % 2 === 0);
+      action.right = !action.left;
+      action.jump = (pulse % 3 === 0);
+      action.durationTicks = 4;
+      noteParts.push('Mob shield active: placing defensive blocks to block hits.');
+    } else if (/creeper/.test(s.nearestHostile)) {
+      action.back = true;
+      action.sprint = true;
+      noteParts.push('Mob strat: kite creeper before re-engage.');
+    } else if (/skeleton|stray/.test(s.nearestHostile)) {
+      action.left = (pulse % 2 === 0);
+      action.right = !action.left;
+      action.sprint = true;
+      noteParts.push('Mob strat: zig-zag against ranged fire.');
+    } else if (/spider|cave_spider|zombie|husk|drowned/.test(s.nearestHostile)) {
+      action.attack = true;
+      action.hotbarSlot = s.swordSlot >= 0 ? s.swordSlot : s.axeSlot;
+      noteParts.push('Mob strat: close-quarters melee clear.');
+    } else if (/enderman/.test(s.nearestHostile)) {
+      action.sneak = true;
+      action.attack = s.health > 12;
+      noteParts.push('Mob strat: controlled Enderman engagement.');
+    } else if (/witch|blaze|ghast/.test(s.nearestHostile)) {
+      action.sprint = true;
+      action.left = (pulse % 2 === 0);
+      action.right = !action.left;
+      noteParts.push('Mob strat: projectile pressure dodge.');
+    }
+  }
+
+  if (lowHp) {
+    action.sprint = false;
+    if (mode !== 'build' && mode !== 'clutch') {
+      action.back = true;
+      action.forward = false;
+    }
+    noteParts.push('Low HP adjustment active.');
+  }
+
+  if (!s.onGround && s.verticalSpeed < -0.25) {
+    action.sneak = true;
+    action.use = hasClutchUtility;
+    action.pitchDelta = clamp(action.pitchDelta + 10, -25, 25);
+    action.durationTicks = Math.min(action.durationTicks, 4);
+    noteParts.push('Falling mitigation active.');
+  }
+
+  if (enemyVeryClose && !s.hasMeleeWeapon) {
+    action.back = true;
+    action.forward = false;
+    action.sprint = false;
+    noteParts.push('No melee weapon + close enemy: forced kite behavior.');
+  }
+
+  if (action.attack && action.hotbarSlot < 0) {
+    action.hotbarSlot = s.swordSlot >= 0 ? s.swordSlot : s.axeSlot;
+  }
+
+  if (action.use && action.hotbarSlot < 0) {
+    if ((mode === 'clutch' || edgeRisk) && s.waterBucketSlot >= 0) action.hotbarSlot = s.waterBucketSlot;
+    else action.hotbarSlot = s.blockSlot;
+  }
+
+  if (hasEnemyInCrosshair && !action.attack && /\b(pvp|fight|bedwars|kill|rush)\b/.test(text)) {
+    action.attack = true;
+  }
+
+  if (!Object.values(action).some(v => v === true)) {
+    action.forward = true;
+    action.durationTicks = 6;
+    noteParts.push('Fallback movement engaged.');
+  }
+
+  return { action, note: noteParts.join(' '), mode };
+}
+
 function getClientIp(req) {
   const forwarded = req.headers['x-forwarded-for'];
   if (typeof forwarded === 'string' && forwarded.length > 0) {
@@ -891,6 +1910,31 @@ function sendApiError(req, res, statusCode, message) {
 }
 
 function checkRateLimit(req, res, next) {
+  if (req.path === '/mc-agent') {
+    const now = Date.now();
+    const ip = getClientIp(req);
+    const sessionKey = normalizeText(req.body?.sessionId || 'default').slice(0, MAX_SESSION_ID_LENGTH) || 'default';
+    const key = `${ip}::${sessionKey}`;
+    const entry = mcAgentRateLimits.get(key);
+
+    if (!entry || now > entry.resetAt) {
+      mcAgentRateLimits.set(key, {
+        count: 1,
+        resetAt: now + MC_AGENT_RATE_LIMIT_WINDOW_MS
+      });
+      return next();
+    }
+
+    if (entry.count >= MC_AGENT_RATE_LIMIT_MAX_REQUESTS) {
+      const retryAfterSeconds = Math.max(1, Math.ceil((entry.resetAt - now) / 1000));
+      res.setHeader('Retry-After', String(retryAfterSeconds));
+      return sendApiError(req, res, 429, 'Too many mc-agent requests. Please slow down.');
+    }
+
+    entry.count += 1;
+    return next();
+  }
+
   const now = Date.now();
   const ip = getClientIp(req);
   const entry = rateLimits.get(ip);
@@ -933,7 +1977,12 @@ setInterval(() => {
       rateLimits.delete(ip);
     }
   }
-}, Math.max(15_000, RATE_LIMIT_WINDOW_MS)).unref();
+  for (const [key, entry] of mcAgentRateLimits.entries()) {
+    if (entry.resetAt <= now) {
+      mcAgentRateLimits.delete(key);
+    }
+  }
+}, Math.max(15_000, RATE_LIMIT_WINDOW_MS, MC_AGENT_RATE_LIMIT_WINDOW_MS)).unref();
 
 async function generateChatReply(sessionId, userMessage, baseUrl = '') {
   if (ENABLE_CONTENT_FILTER && isUnsafeInput(userMessage)) {
@@ -1052,9 +2101,12 @@ async function generateChatReply(sessionId, userMessage, baseUrl = '') {
   const userMessageForModel = buildUserMessageWithWebContext(userMessage, webContext);
   const usedWebSearch = Boolean(webContext.contextText);
 
-  // SolasGPT manages its own session history internally
+  const history = getSessionMessages(sessionId);
+  const conversation = trimHistory(history, HISTORY_LIMIT);
+
   if (PROVIDER === 'solasgpt') {
-    const forwardedMessage = truncateText(userMessageForModel, SOLASGPT_FORWARD_MAX_CHARS);
+    const enrichedMessage = buildSolasForwardMessage(sessionId, userMessageForModel);
+    const forwardedMessage = truncateText(enrichedMessage, SOLASGPT_FORWARD_MAX_CHARS);
 
     let rawReply;
     try {
@@ -1069,6 +2121,12 @@ async function generateChatReply(sessionId, userMessage, baseUrl = '') {
     const usePhrasingFallback =
       PHRASING_KNOWLEDGE_ENABLED && PHRASING_FALLBACK_ON_LOW_QUALITY && looksLowQualityReply(rawReply);
     const reply = usePhrasingFallback ? phraseKnowledgeReply(userMessage, webContext) : rawReply;
+
+    const updatedHistory = trimHistory(
+      [...conversation, { role: 'user', content: userMessage }, { role: 'assistant', content: reply }],
+      HISTORY_LIMIT
+    );
+    sessions.set(sessionId, updatedHistory);
 
     if (ENABLE_CONTENT_FILTER && isUnsafeOutput(reply)) {
       const summary = buildReasoningSummary({
@@ -1109,9 +2167,6 @@ async function generateChatReply(sessionId, userMessage, baseUrl = '') {
       webSources: webContext.sources
     };
   }
-
-  const history = getSessionMessages(sessionId);
-  const conversation = trimHistory(history, HISTORY_LIMIT);
 
   const messages = [
     { role: 'system', content: SYSTEM_PROMPT },
@@ -1263,6 +2318,8 @@ app.get('/health', (req, res) => {
       maxMessageLength: MAX_MESSAGE_LENGTH,
       rateLimitWindowMs: RATE_LIMIT_WINDOW_MS,
       rateLimitMaxRequests: RATE_LIMIT_MAX_REQUESTS,
+      mcAgentRateLimitWindowMs: MC_AGENT_RATE_LIMIT_WINDOW_MS,
+      mcAgentRateLimitMaxRequests: MC_AGENT_RATE_LIMIT_MAX_REQUESTS,
       apiKeyRequired: REQUIRE_API_KEY,
       contentFilterEnabled: ENABLE_CONTENT_FILTER,
       reasoningSummaryEnabled: SHOW_REASONING_SUMMARY,
@@ -1490,6 +2547,87 @@ app.post('/chat-plain', checkApiKey, checkRateLimit, async (req, res) => {
   }
 });
 
+app.post(['/mc-agent', '/mc'], checkApiKey, checkRateLimit, (req, res) => {
+  try {
+    const sessionId = normalizeText(req.body?.sessionId || 'default');
+    const objective = normalizeText(req.body?.objective || '');
+    const state = req.body?.state && typeof req.body.state === 'object' ? req.body.state : {};
+    const sessionError = validateSessionId(sessionId);
+    if (sessionError) {
+      return res.status(400).json({ ok: false, error: sessionError });
+    }
+    if (!objective) {
+      return res.status(400).json({ ok: false, error: 'objective is required' });
+    }
+    if (objective.length > 400) {
+      return res.status(400).json({ ok: false, error: 'objective is too long (max 400)' });
+    }
+
+    const existingCtx = mcAgentSessions.get(sessionId) || { tickCounter: 0 };
+    const opponentName = normalizeText(state?.nearestEnemyName || 'unknown');
+    const existingOpponents = existingCtx.opponents && typeof existingCtx.opponents === 'object'
+      ? existingCtx.opponents
+      : {};
+    const existingOpponent = existingOpponents[opponentName] || { seen: 0 };
+
+    const nextCtx = {
+      tickCounter: Number(existingCtx.tickCounter || 0) + 1,
+      updatedAt: Date.now(),
+      goals: {
+        prot4Diamond: /\b(protection ?4|prot ?4|full diamond|diamond armor)\b/.test(objective),
+        netherite: /\b(netherite|netherite upgrade|smithing template)\b/.test(objective),
+        allBooks: /\b(all enchant|all books|every book|all other enchanting books)\b/.test(objective)
+      },
+      opponents: {
+        ...existingOpponents,
+        [opponentName]: {
+          seen: Number(existingOpponent.seen || 0) + 1,
+          lastDistance: Number(state?.nearestEnemyDistance || -1),
+          lastArmorPieces: Number(state?.nearestEnemyArmorPieces || 0),
+          lastMainItem: normalizeText(state?.nearestEnemyMainItem || ''),
+          updatedAt: Date.now()
+        }
+      }
+    };
+    const decision = buildMinecraftAction(objective, state, nextCtx);
+    mcAgentSessions.set(sessionId, {
+      ...nextCtx,
+      mode: decision.mode,
+      objective: objective.slice(0, 120),
+      lastAction: decision.action
+    });
+    scheduleMcMemorySave();
+
+    if (mcAgentSessions.size > 500) {
+      const cutoff = Date.now() - (30 * 60 * 1000);
+      for (const [sid, ctx] of mcAgentSessions.entries()) {
+        if (!ctx || Number(ctx.updatedAt || 0) < cutoff) {
+          mcAgentSessions.delete(sid);
+        }
+      }
+    }
+
+    return res.json({
+      ok: true,
+      sessionId,
+      objective,
+      action: decision.action,
+      note: decision.note,
+      mode: decision.mode,
+      memory: {
+        tickCounter: nextCtx.tickCounter,
+        goals: nextCtx.goals,
+        opponent: nextCtx.opponents[opponentName]
+      }
+    });
+  } catch (error) {
+    return res.status(500).json({
+      ok: false,
+      error: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
 app.post('/reset', checkApiKey, checkRateLimit, async (req, res) => {
   const sessionId = normalizeText(req.body?.sessionId || 'default');
   const sessionError = validateSessionId(sessionId);
@@ -1498,6 +2636,9 @@ app.post('/reset', checkApiKey, checkRateLimit, async (req, res) => {
   }
 
   sessions.delete(sessionId);
+  sessionFeedback.delete(sessionId);
+  mcAgentSessions.delete(sessionId);
+  scheduleMcMemorySave();
   if (PROVIDER === 'solasgpt') {
     try {
       await fetch(`${SOLASGPT_URL}/reset`, {
@@ -1534,6 +2675,14 @@ app.post('/feedback', checkApiKey, checkRateLimit, async (req, res) => {
         // best-effort forwarding, keep API success for UI flow
       }
     }
+
+    appendSessionFeedback(sessionId, {
+      ts: Date.now(),
+      message,
+      reply,
+      rating,
+      improvement
+    });
 
     return res.json({ ok: true, sessionId, rating });
   } catch (error) {
