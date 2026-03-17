@@ -6,7 +6,8 @@
   "description": "Simple chat backend for TurboWarp Scratch projects",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js"
+    "start": "node server.js",
+    "start:stack": "bash ./run_robot_stack.sh"
   },
   "dependencies": {
     "cors": "^2.8.5",
