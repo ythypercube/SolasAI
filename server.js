@@ -1003,9 +1003,17 @@ function clamp(value, min, max) {
   return Math.min(max, Math.max(min, value));
 }
 
+function extractRequestedAmount(text, resourcePattern) {
+  const m = text.match(new RegExp(`\\b(\\d+)\\s*(?:x\\s*)?(?:${resourcePattern})\\b`));
+  if (!m) return null;
+  const amount = Number(m[1]);
+  return Number.isFinite(amount) && amount > 0 ? amount : null;
+}
+
 function getModeFromObjective(text) {
   if (/\b(crystal pvp|end crystal|anchor pvp|respawn anchor|totem pop|dtap|k[bB] ?2|pearl combo)\b/.test(text)) return 'crystal';
   if (/\b(speedrun|any%|beat (the )?dragon|kill (the )?ender dragon|stronghold|end portal|eye of ender|blaze rod)\b/.test(text)) return 'speedrun';
+  if (/\b(andromeda|andromeda ?bridge|telly|telly ?bridge|tele ?bridge|speedbridge|godbridge|bridge to)\b/.test(text)) return 'build';
   if (/\b(craft|crafting|smelt|forge|recipe|anvil|enchant)\b/.test(text)) return 'craft';
   if (/\b(protection ?4|prot ?4|villager trade|librarian|full diamond|armor progression|netherite)\b/.test(text)) return 'progression';
   if (/\b(base|hidden base|orbital strike cannon|cannon|hide the base|underground base|duper|villager hall|stealth)\b/.test(text)) return 'base';
@@ -1623,6 +1631,8 @@ function buildMinecraftAction(objective, state = {}, sessionCtx = {}) {
 
   if (mode === 'build') {
     const bridging = /\b(bridge|speedbridge|godbridge|rush)\b/.test(text) || wantsTellyBridge || wantsAndromedaBridge;
+    const wantsWoodPrep = /\b(log|logs|wood|plank|planks|collect \d+ logs?)\b/.test(text);
+    const treeInSight = /log|wood|tree|oak|birch|spruce|jungle|acacia|dark_oak|mangrove|cherry/.test(s.focusedEntity || '');
     action.use = s.hasBlocks;
     action.hotbarSlot = s.blockSlot;
     action.sneak = bridging || /\b(edge|safe|careful)\b/.test(text);
@@ -1655,6 +1665,17 @@ function buildMinecraftAction(objective, state = {}, sessionCtx = {}) {
       action.yawDelta = strafeRight ? 3 : -3;
       action.durationTicks = 4;
       noteParts.push('Andromeda bridge routine: diagonal strafe-place rhythm active.');
+    } else if (bridging && !s.hasBlocks && wantsWoodPrep) {
+      action.use = false;
+      action.attack = treeInSight;
+      action.hotbarSlot = s.axeSlot >= 0 ? s.axeSlot : s.pickaxeSlot;
+      action.forward = !treeInSight;
+      action.sprint = !treeInSight;
+      action.jump = !treeInSight && s.horizontalSpeed < 0.08;
+      action.sneak = false;
+      action.yawDelta = treeInSight ? 0 : ((pulse % 2 === 0) ? 6 : -6);
+      action.durationTicks = 6;
+      noteParts.push('Bridge prep: collecting wood/logs first, then crafting planks for bridging blocks.');
     } else {
       noteParts.push(s.hasBlocks
         ? `Build mode: controlled placement and bridge safety (${s.hotbarBlocks} blocks hotbar).`
@@ -1741,7 +1762,12 @@ function buildMinecraftAction(objective, state = {}, sessionCtx = {}) {
     action.use = /\b(place|build|use|block)\b/.test(text);
     action.hotbarSlot = action.use ? s.blockSlot : (action.attack ? (s.pickaxeSlot >= 0 ? s.pickaxeSlot : s.axeSlot) : -1);
     action.durationTicks = 8;
-    if (pulse % 4 === 0) action.yawDelta = (pulse % 2 === 0) ? 4 : -4;
+    const wantsExploration = /\b(explore|search|walk around|cave|look around|patrol)\b/.test(text);
+    const likelyStuck = s.onGround && s.horizontalSpeed < 0.025 && !edgeRisk;
+    if (wantsExploration && likelyStuck && pulse % 8 === 0) {
+      action.yawDelta = (pulse % 16 === 0) ? 10 : -10;
+      action.jump = true;
+    }
     noteParts.push('General mode: exploring objective path.');
   }
 
@@ -1752,11 +1778,23 @@ function buildMinecraftAction(objective, state = {}, sessionCtx = {}) {
     const wantsGold = /\bgold\b/.test(text);
     const wantsEmerald = /\bemerald\b/.test(text);
 
-    const targetReached = (wantsIron && s.ironCount >= 20)
-      || (wantsRedstone && s.redstoneCount >= 32)
-      || (wantsDiamond && s.diamondCount >= 4)
-      || (wantsGold && s.goldCount >= 12)
-      || (wantsEmerald && s.emeraldCount >= 2);
+    const requestedIron = extractRequestedAmount(text, 'iron');
+    const requestedRedstone = extractRequestedAmount(text, 'redstone');
+    const requestedDiamond = extractRequestedAmount(text, 'diamond|diamonds');
+    const requestedGold = extractRequestedAmount(text, 'gold');
+    const requestedEmerald = extractRequestedAmount(text, 'emerald|emeralds');
+
+    const ironTarget = requestedIron ?? 20;
+    const redstoneTarget = requestedRedstone ?? 32;
+    const diamondTarget = requestedDiamond ?? 4;
+    const goldTarget = requestedGold ?? 12;
+    const emeraldTarget = requestedEmerald ?? 2;
+
+    const targetReached = (wantsIron && s.ironCount >= ironTarget)
+      || (wantsRedstone && s.redstoneCount >= redstoneTarget)
+      || (wantsDiamond && s.diamondCount >= diamondTarget)
+      || (wantsGold && s.goldCount >= goldTarget)
+      || (wantsEmerald && s.emeraldCount >= emeraldTarget);
 
     if (enemyNearby || lowHp || inventoryValue >= 24) {
       action.back = true;
@@ -1770,19 +1808,28 @@ function buildMinecraftAction(objective, state = {}, sessionCtx = {}) {
       }
       noteParts.push('Resource safety protocol: retreating with loot to avoid death.');
     } else if (targetReached) {
-      action.back = true;
+      action.back = false;
       action.forward = false;
-      action.sprint = true;
+      action.sprint = false;
+      action.sneak = true;
       action.durationTicks = 6;
       action.hotbarSlot = s.utilityFoodSlot >= 0 ? s.utilityFoodSlot : s.blockSlot;
-      noteParts.push('Resource target reached. Returning safely.');
+      noteParts.push('Resource target reached. Holding position and awaiting next objective.');
     } else {
+      const stuckMining = s.onGround && s.horizontalSpeed < 0.025 && !edgeRisk;
       action.forward = true;
-      action.sprint = false;
-      action.jump = s.horizontalSpeed < 0.07;
+      action.sprint = true;
+      action.jump = s.horizontalSpeed < 0.05;
       action.sneak = edgeRisk || (s.fallDistance > 0.5);
       action.durationTicks = 7;
       action.hotbarSlot = wantsRedstone || wantsDiamond ? s.pickaxeSlot : s.blockSlot;
+      action.yawDelta = 0;
+      if (stuckMining && pulse % 8 === 0) {
+        action.yawDelta = (pulse % 16 === 0) ? 12 : -12;
+        action.left = (pulse % 16 === 0);
+        action.right = !action.left;
+        action.jump = true;
+      }
       noteParts.push('Resource route: cautious collection with survival priority.');
     }
   }
