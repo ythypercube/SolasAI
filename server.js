@@ -1028,7 +1028,7 @@ function extractRequestedAmount(text, resourcePattern) {
 }
 
 function getModeFromObjective(text) {
-  if (/\b(crystal pvp|end crystal|anchor pvp|respawn anchor|totem pop|dtap|k[bB] ?2|pearl combo)\b/.test(text)) return 'crystal';
+  if (/\b(crystal pvp|cpvp|c ?p ?v ?p|end crystal|anchor pvp|respawn anchor|totem pop|dtap|k[bB] ?2|pearl combo)\b/.test(text)) return 'crystal';
   if (/\b(speedrun|any%|beat (the )?dragon|kill (the )?ender dragon|stronghold|end portal|eye of ender|blaze rod)\b/.test(text)) return 'speedrun';
   if (/\b(andromeda|andromeda ?bridge|telly|telly ?bridge|tele ?bridge|speedbridge|godbridge|bridge to)\b/.test(text)) return 'build';
   if (/\b(craft|crafting|smelt|forge|recipe|anvil|enchant)\b/.test(text)) return 'craft';
@@ -1387,7 +1387,7 @@ function buildMinecraftAction(objective, state = {}, sessionCtx = {}) {
     const strafePhase = Math.floor(pulse / 3);
     const strafeLeft = (strafePhase % 2) === 0;
 
-    const pvpDuration = 3; // durationTicks value — yawDelta is applied every tick so divide total correction by this
+    const pvpDuration = 4; // slightly slower updates to reduce overshoot and path jitter
 
     // ── Pick best target (player first, then hostile mob) ────────────────────
     const hasMobTarget    = s.nearestHostileDistance > 0 && s.nearestHostileDistance < 20;
@@ -1410,31 +1410,48 @@ function buildMinecraftAction(objective, state = {}, sessionCtx = {}) {
       while (rawYaw > 180) rawYaw -= 360;
       while (rawYaw <= -180) rawYaw += 360;
       // Divide by pvpDuration so we turn rawYaw total, not rawYaw × pvpDuration
-      aimYawDelta = clamp(rawYaw / pvpDuration, -10, 10);
+      aimYawDelta = clamp(rawYaw / pvpDuration, -8, 8);
     }
     // Use rawYaw (total error) for alignment checks, not per-tick aimYawDelta
-    const isAligned = hasEnemyInCrosshair || (hasTarget && Math.abs(rawYaw) < 25);
-    const canStrafe = hasTarget && Math.abs(rawYaw) < 30 && targetDist < 4.5;
+    const isAligned = hasEnemyInCrosshair || (hasTarget && Math.abs(rawYaw) < 22);
+    const canStrafe = hasTarget && Math.abs(rawYaw) < 24 && targetDist >= 2.0 && targetDist < 4.3;
     const isFacing  = hasTarget && Math.abs(rawYaw) < 60; // broad facing check for movement
+    const attackWindow = hasTarget && isAligned && targetDist <= 4.25;
+    const holdGroundRange = hasTarget && targetDist >= 1.9 && targetDist <= 3.2;
+    const shouldCloseGap = hasTarget && targetDist > 3.2 && isFacing;
 
     // Low-HP retreat: back away and eat (pearl/windcharge handled below)
     const shouldRetreat = hasTarget && s.health <= 6 && s.health > 0;
 
     action.hotbarSlot  = s.swordSlot >= 0 ? s.swordSlot : s.axeSlot;
-    action.attack      = hasTarget && isAligned && targetDist < 4.0 && !shouldRetreat;
-    action.forward     = hasTarget && targetDist > 2.4 && isFacing && !shouldRetreat;
-    action.back        = shouldRetreat || (hasTarget && targetDist < 1.5);
-    action.sprint      = hasTarget && targetDist > 3.5 && isFacing && !lowHp && !shouldRetreat;
+    action.attack      = attackWindow && !shouldRetreat;
+    action.forward     = shouldCloseGap && !shouldRetreat;
+    action.back        = shouldRetreat || (hasTarget && targetDist < 1.45);
+    action.sprint      = hasTarget && targetDist > 4.8 && isFacing && !lowHp && !shouldRetreat;
     // Strafe: only while NOT strongly turning (use rawYaw gate) and within engagement range
     action.left        = strafeLeft  && canStrafe && !shouldRetreat;
     action.right       = !strafeLeft && canStrafe && !shouldRetreat;
-    action.jump        = isAligned && hasTarget && targetDist < 3.0 && s.onGround && (pulse % 4 === 0) && !shouldRetreat;
+    action.jump        = false;
     // When scanning with no target, rotate slowly; when targeting, apply per-tick correction
-    action.yawDelta    = hasTarget ? aimYawDelta : 6;
+    action.yawDelta    = hasTarget ? aimYawDelta : 4;
     action.pitchDelta  = 0; // no vertical oscillation in melee
     action.durationTicks = pvpDuration;
+
+    if (holdGroundRange && !shouldRetreat) {
+      action.forward = false;
+      action.back = false;
+      action.sprint = false;
+    }
+
+    if (attackWindow && !shouldRetreat) {
+      // Attack priority over movement: stop pushing through the target while swinging
+      action.forward = false;
+      action.back = false;
+      action.sprint = false;
+    }
+
     noteParts.push(hasTarget
-      ? `PVP: lock ${targetName} dist=${targetDist.toFixed(1)} err=${rawYaw.toFixed(0)}° aligned=${isAligned}`
+      ? `PVP: lock ${targetName} dist=${targetDist.toFixed(1)} err=${rawYaw.toFixed(0)}° aligned=${isAligned} hold=${holdGroundRange}`
       : 'PVP: scanning for target.');
 
     // ── Low HP retreat: pearl away OR windcharge up + eat ──────────────────
@@ -1616,6 +1633,10 @@ function buildMinecraftAction(objective, state = {}, sessionCtx = {}) {
     action.sneak = true;
     action.sprint = false;
     action.durationTicks = 4;
+
+    if (s.totemCount >= 2) {
+      noteParts.push('CPvP double totem active: keeping one in offhand with spare in hotbar for fast re-equip.');
+    }
 
     if (crystalSpamThreat) {
       if (canUsePearl && severeDanger) {
