@@ -1416,7 +1416,7 @@ function buildMinecraftAction(objective, state = {}, sessionCtx = {}) {
     const isAligned = hasEnemyInCrosshair || (hasTarget && Math.abs(rawYaw) < 22);
     const canStrafe = hasTarget && Math.abs(rawYaw) < 24 && targetDist >= 2.0 && targetDist < 4.3;
     const isFacing  = hasTarget && Math.abs(rawYaw) < 60; // broad facing check for movement
-    const attackWindow = hasTarget && isAligned && targetDist <= 4.25;
+    const attackWindow = hasTarget && isAligned && targetDist <= 4.45;
     const holdGroundRange = hasTarget && targetDist >= 1.9 && targetDist <= 3.2;
     const shouldCloseGap = hasTarget && targetDist > 3.2 && isFacing;
 
@@ -1632,7 +1632,36 @@ function buildMinecraftAction(objective, state = {}, sessionCtx = {}) {
   if (mode === 'crystal') {
     action.sneak = true;
     action.sprint = false;
-    action.durationTicks = 4;
+    action.durationTicks = 5;
+
+    // Flat-ground CPvP tuning: stabilize movement and keep focus on target.
+    const crystalHasTarget = s.nearestEnemyDistance > 0 && s.nearestEnemyDistance < 24;
+    const crystalDist = crystalHasTarget ? s.nearestEnemyDistance : -1;
+    let crystalRawYaw = 0;
+    let crystalYawDelta = 0;
+    if (crystalHasTarget && (Math.abs(s.nearestEnemyDx) > 0.05 || Math.abs(s.nearestEnemyDz) > 0.05)) {
+      const targetYaw = Math.atan2(-s.nearestEnemyDx, s.nearestEnemyDz) * (180 / Math.PI);
+      crystalRawYaw = targetYaw - s.yaw;
+      while (crystalRawYaw > 180) crystalRawYaw -= 360;
+      while (crystalRawYaw <= -180) crystalRawYaw += 360;
+      crystalYawDelta = clamp(crystalRawYaw / action.durationTicks, -7, 7);
+    }
+    const crystalAligned = crystalHasTarget && Math.abs(crystalRawYaw) < 26;
+    const crystalHoldRange = crystalHasTarget && crystalDist >= 2.6 && crystalDist <= 4.8;
+    const crystalNeedClose = crystalHasTarget && crystalDist > 4.8 && Math.abs(crystalRawYaw) < 65;
+    const crystalTooClose = crystalHasTarget && crystalDist < 2.1;
+
+    action.yawDelta = crystalHasTarget ? crystalYawDelta : 3;
+    action.forward = crystalNeedClose;
+    action.back = crystalTooClose;
+    action.left = crystalHasTarget && crystalAligned && crystalDist >= 2.6 && crystalDist < 5.5 && (pulse % 4 < 2);
+    action.right = crystalHasTarget && crystalAligned && crystalDist >= 2.6 && crystalDist < 5.5 && (pulse % 4 >= 2);
+
+    if (crystalHoldRange) {
+      action.forward = false;
+      action.back = false;
+      action.sprint = false;
+    }
 
     if (s.totemCount >= 2) {
       noteParts.push('CPvP double totem active: keeping one in offhand with spare in hotbar for fast re-equip.');
@@ -1661,21 +1690,37 @@ function buildMinecraftAction(objective, state = {}, sessionCtx = {}) {
     } else if (s.totemSlot >= 0 && s.health <= 10) {
       action.hotbarSlot = s.totemSlot;
       action.use = true;
+      action.forward = false;
+      action.back = false;
+      action.left = false;
+      action.right = false;
       noteParts.push('Totem safety priority active.');
     } else if (hasCrystalKit && s.obsidianSlot >= 0 && s.endCrystalSlot >= 0) {
       if (pulse % 2 === 0) {
         action.hotbarSlot = s.obsidianSlot;
         action.use = true;
+        action.forward = false;
+        action.back = false;
+        action.left = false;
+        action.right = false;
         noteParts.push('Crystal setup: placing obsidian.');
       } else {
         action.hotbarSlot = s.endCrystalSlot;
         action.use = true;
         action.attack = true;
+        action.forward = false;
+        action.back = false;
+        action.left = false;
+        action.right = false;
         noteParts.push('Crystal detonation cycle active.');
       }
     } else if (s.respawnAnchorSlot >= 0 && s.glowstoneSlot >= 0 && s.respawnAnchorCount > 0 && s.glowstoneCount > 0) {
       action.hotbarSlot = (pulse % 2 === 0) ? s.respawnAnchorSlot : s.glowstoneSlot;
       action.use = true;
+      action.forward = false;
+      action.back = false;
+      action.left = false;
+      action.right = false;
       noteParts.push('Anchor PVP cycle active.');
     } else {
       action.forward = true;
@@ -1712,6 +1757,10 @@ function buildMinecraftAction(objective, state = {}, sessionCtx = {}) {
       action.durationTicks = 6;
       noteParts.push('Crystal loot pickup: collecting needed dropped items.');
     }
+
+    noteParts.push(crystalHasTarget
+      ? `Crystal lock: dist=${crystalDist.toFixed(1)} err=${crystalRawYaw.toFixed(0)}° hold=${crystalHoldRange}`
+      : 'Crystal lock: scanning.');
   }
 
   if (mode === 'craft') {
