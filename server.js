@@ -68,7 +68,7 @@ const REPLY_WRAP_OVERFLOW = Number(process.env.REPLY_WRAP_OVERFLOW || 20);
 const SOLASGPT_FORWARD_MAX_CHARS = Number(process.env.SOLASGPT_FORWARD_MAX_CHARS || 450);
 const PHRASING_KNOWLEDGE_ENABLED = String(process.env.PHRASING_KNOWLEDGE_ENABLED || 'false').toLowerCase() === 'true';
 const PHRASING_FALLBACK_ON_LOW_QUALITY = String(process.env.PHRASING_FALLBACK_ON_LOW_QUALITY || 'false').toLowerCase() === 'true';
-const UPSTREAM_FALLBACK_ENABLED = String(process.env.UPSTREAM_FALLBACK_ENABLED || 'false').toLowerCase() === 'true';
+const UPSTREAM_FALLBACK_ENABLED = String(process.env.UPSTREAM_FALLBACK_ENABLED || 'true').toLowerCase() === 'true';
 const GENERATED_IMAGE_SIZE = Number(process.env.GENERATED_IMAGE_SIZE || 480);
 const API_KEYS = (process.env.API_KEYS || '')
   .split(',')
@@ -3052,10 +3052,8 @@ async function generateChatReply(sessionId, userMessage, baseUrl = '') {
       const directAnswer = generateHelpfulDirectAnswer(userMessage, webContext);
       if (directAnswer) {
         rawReply = directAnswer;
-      } else if (UPSTREAM_FALLBACK_ENABLED) {
-        rawReply = phraseKnowledgeReply(userMessage, webContext);
       } else {
-        throw error;
+        rawReply = phraseKnowledgeReply(userMessage, webContext);
       }
     }
 
