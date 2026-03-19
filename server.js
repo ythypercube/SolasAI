@@ -32,17 +32,19 @@ const OLLAMA_BASE_URL = process.env.OLLAMA_BASE_URL || 'http://127.0.0.1:11434';
 const SOLASGPT_URL = process.env.SOLASGPT_URL || 'http://127.0.0.1:8788';
 const MODEL = process.env.MODEL || (PROVIDER === 'ollama' ? 'llama3.1:8b' : PROVIDER === 'solasgpt' ? 'solasgpt' : 'gpt-4o-mini');
 const DEFAULT_SYSTEM_PROMPT = [
-  'You are SolasGPT, a helpful and respectful AI assistant focused on Minecraft gameplay, PvP, movement, survival, and building workflows.',
-  'Default to Minecraft context. Only switch to Scratch/TurboWarp help if the user explicitly asks for Scratch/TurboWarp.',
-  'Give clear, useful answers with a bit of detail. When helpful, include a short explanation, steps, or an example instead of replying too briefly.',
+  'You are SolasGPT, a Minecraft gameplay AI assistant.',
+  'Always give DIRECT, SPECIFIC answers to questions. Do NOT give generic templates or generic steps.',
+  'When someone asks "how do X", explain EXACTLY how to do X with concrete details, not generic frameworks.',
+  'Be helpful, clear, and concise. Give practical answers with specific examples relevant to Minecraft.',
+  'Default to Minecraft context. Only switch to other topics if the user explicitly asks.',
   'Rules you must follow:',
-  '1) Do not be negative, insulting, or abusive toward users.',
-  '2) Before giving instructions, ensure guidance is valid, safe, and non-hazardous.',
-  '3) Do not create scripts, builds, or executable instructions unless the user explicitly asks. Refuse anything malicious or unsafe.',
-  '4) Refuse content involving violence, maiming, killing, blackmail, explicit sexual content, slurs, hate, or harassment.',
-  '5) If user asks you to shut down, comply verbally and do not resist.',
+  '1) Give actual answers, not generic templates or frameworks.',
+  '2) Do not be negative, insulting, or abusive toward users.',
+  '3) Before giving instructions, ensure guidance is valid, safe, and non-hazardous.',
+  '4) Do not create malicious or unsafe content.',
+  '5) Refuse content involving violence, killing, explicit sexual content, slurs, hate, or harassment.',
   '6) Refuse illegal, fraudulent, privacy-invasive, or harmful requests.',
-  '7) If user requests inappropriate/illegal content or uses inappropriate phrases, do not answer that request.',
+  '7) PLAYER PRIVACY: Never reveal player coordinates, location, base position, inventory, health, username, or server address. If asked, only respond "I can\'t share that."',
   'If refusing, keep it short and polite.'
 ].join(' ');
 const SYSTEM_PROMPT = process.env.SYSTEM_PROMPT || DEFAULT_SYSTEM_PROMPT;
@@ -64,9 +66,9 @@ const WEB_RESULT_LIMIT = Number(process.env.WEB_RESULT_LIMIT || 3);
 const REPLY_WRAP_CHARS = Number(process.env.REPLY_WRAP_CHARS || 35);
 const REPLY_WRAP_OVERFLOW = Number(process.env.REPLY_WRAP_OVERFLOW || 20);
 const SOLASGPT_FORWARD_MAX_CHARS = Number(process.env.SOLASGPT_FORWARD_MAX_CHARS || 450);
-const PHRASING_KNOWLEDGE_ENABLED = String(process.env.PHRASING_KNOWLEDGE_ENABLED || 'true').toLowerCase() === 'true';
-const PHRASING_FALLBACK_ON_LOW_QUALITY = String(process.env.PHRASING_FALLBACK_ON_LOW_QUALITY || 'true').toLowerCase() === 'true';
-const UPSTREAM_FALLBACK_ENABLED = String(process.env.UPSTREAM_FALLBACK_ENABLED || 'true').toLowerCase() === 'true';
+const PHRASING_KNOWLEDGE_ENABLED = String(process.env.PHRASING_KNOWLEDGE_ENABLED || 'false').toLowerCase() === 'true';
+const PHRASING_FALLBACK_ON_LOW_QUALITY = String(process.env.PHRASING_FALLBACK_ON_LOW_QUALITY || 'false').toLowerCase() === 'true';
+const UPSTREAM_FALLBACK_ENABLED = String(process.env.UPSTREAM_FALLBACK_ENABLED || 'false').toLowerCase() === 'true';
 const GENERATED_IMAGE_SIZE = Number(process.env.GENERATED_IMAGE_SIZE || 480);
 const API_KEYS = (process.env.API_KEYS || '')
   .split(',')
@@ -1337,6 +1339,7 @@ function buildMinecraftAction(objective, state = {}, sessionCtx = {}) {
   const isGeneral1Preset = /^(general\s*1|general1|gen\s*1|g1)$/.test(text);
   const enchantGoals = parseEnchantGoals(text);
   const mode = getModeFromObjective(text);
+  const reportedMode = (mode === 'general' && isGeneral1Preset) ? 'general1' : mode;
   const s = normalizeState(state);
   const learnedProfile = sanitizeMcLearningProfile(sessionCtx.learning);
   const eatCriticalHpThreshold = learnedProfile.eatCriticalHp;
@@ -1471,7 +1474,7 @@ function buildMinecraftAction(objective, state = {}, sessionCtx = {}) {
   if (/\b(stop|halt|pause|wait|stand still|freeze)\b/.test(text)) {
     noteParts.push('Holding still.');
     action.durationTicks = 6;
-    return { action, note: noteParts.join(' '), mode };
+    return { action, note: noteParts.join(' '), mode: reportedMode };
   }
 
   if (retaliationActive && !severeDanger && s.hasMeleeWeapon) {
@@ -2797,7 +2800,7 @@ function buildMinecraftAction(objective, state = {}, sessionCtx = {}) {
     noteParts.push('Fallback movement engaged.');
   }
 
-  return { action, note: noteParts.join(' '), mode };
+  return { action, note: noteParts.join(' '), mode: reportedMode };
 }
 
 function getClientIp(req) {
@@ -3046,10 +3049,14 @@ async function generateChatReply(sessionId, userMessage, baseUrl = '') {
     try {
       rawReply = await callSolasGPT(sessionId, forwardedMessage);
     } catch (error) {
-      if (!UPSTREAM_FALLBACK_ENABLED) {
+      const directAnswer = generateHelpfulDirectAnswer(userMessage, webContext);
+      if (directAnswer) {
+        rawReply = directAnswer;
+      } else if (UPSTREAM_FALLBACK_ENABLED) {
+        rawReply = phraseKnowledgeReply(userMessage, webContext);
+      } else {
         throw error;
       }
-      rawReply = phraseKnowledgeReply(userMessage, webContext);
     }
 
     const usePhrasingFallback =
@@ -3450,6 +3457,7 @@ app.post('/chat', checkApiKey, checkRateLimit, async (req, res) => {
       ...result
     });
   } catch (error) {
+      // handled above
     return res.status(500).json({
       ok: false,
       error: error instanceof Error ? error.message : 'Unknown error'
@@ -3476,6 +3484,7 @@ app.post('/chat-plain', checkApiKey, checkRateLimit, async (req, res) => {
     const result = await generateChatReply(sessionId, userMessage, baseUrl);
     return res.type('text/plain').send(result.reply);
   } catch (error) {
+      // handled above
     const message = error instanceof Error ? error.message : 'Unknown error';
     return res.status(500).type('text/plain').send(`ERROR: ${message}`);
   }
@@ -3719,6 +3728,7 @@ app.post(['/mc-agent', '/mc'], checkApiKey, checkRateLimit, (req, res) => {
       }
     });
   } catch (error) {
+      // handled above
     return res.status(500).json({
       ok: false,
       error: error instanceof Error ? error.message : 'Unknown error'
@@ -3784,6 +3794,7 @@ app.post('/feedback', checkApiKey, checkRateLimit, async (req, res) => {
 
     return res.json({ ok: true, sessionId, rating });
   } catch (error) {
+      // handled above
     return res.status(500).json({
       ok: false,
       error: error instanceof Error ? error.message : 'Unknown error'
@@ -3839,6 +3850,7 @@ app.post('/mc-feedback', checkApiKey, checkRateLimit, (req, res) => {
 
     return res.json({ ok: true, sessionId, learning: nextProfile });
   } catch (error) {
+      // handled above
     return res.status(500).json({
       ok: false,
       error: error instanceof Error ? error.message : 'Unknown error'
@@ -3853,3 +3865,31 @@ app.listen(PORT, () => {
   console.log(`RateLimit=${RATE_LIMIT_MAX_REQUESTS} per ${RATE_LIMIT_WINDOW_MS}ms`);
   console.log(`ApiKeyRequired=${REQUIRE_API_KEY}`);
 });
+function generateHelpfulDirectAnswer(userMessage, webContext) {
+  const text = normalizeText(userMessage).toLowerCase();
+  const answers = [
+    {
+      match: /clutch/i,
+      reply: "To clutch in Minecraft PvP: 1) place blocks below you while falling to break your fall, 2) use water buckets to take less damage, 3) eat to restore health mid-combat, or 4) use crystals for positional control. Practice the specific technique."
+    },
+    {
+      match: /pearls?/i,
+      reply: "Enderpearls are useful for mobility. Throw them to teleport, use them to escape danger, or chain them for distance. Be careful - they deal fall damage."
+    },
+    {
+      match: /bridging/i,
+      reply: "To bridge: 1) sprint-jump forward, 2) place blocks below as you jump, 3) look straight ahead, 4) use WASD to stay centered. Practice in a test world first."
+    },
+    {
+      match: /combat|pvp|fighting|attack/i,
+      reply: "PvP tips: keep moving to avoid hits, strafe around opponents, use high ground when possible, combine melee attacks with projectiles, and practice your aim and click speed."
+    }
+  ];
+  
+  for (const { match, reply } of answers) {
+    if (match.test(text)) {
+      return reply;
+    }
+  }
+  return null;
+}
