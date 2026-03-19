@@ -5,3 +5,7 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
+.backend.pid
+backend.log
+learning_loops.log
+mc_agent_memory.json

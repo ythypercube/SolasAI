@@ -7,7 +7,11 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "start:stack": "bash ./run_robot_stack.sh"
+    "start:render": "bash -lc 'BACKEND_URL=\"http://127.0.0.1:${PORT:-8787}\" node learning_loops.js > learning_loops.log 2>&1 & exec node server.js'",
+    "start:stack": "bash ./run_robot_stack.sh",
+    "start:learn": "node learning_loops.js",
+    "start:learn:turbowarp": "LOOP_TARGET=turbowarp node learning_loops.js",
+    "start:learn:minecraft": "LOOP_TARGET=minecraft node learning_loops.js"
   },
   "dependencies": {
     "cors": "^2.8.5",

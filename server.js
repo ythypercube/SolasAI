@@ -32,8 +32,8 @@ const OLLAMA_BASE_URL = process.env.OLLAMA_BASE_URL || 'http://127.0.0.1:11434';
 const SOLASGPT_URL = process.env.SOLASGPT_URL || 'http://127.0.0.1:8788';
 const MODEL = process.env.MODEL || (PROVIDER === 'ollama' ? 'llama3.1:8b' : PROVIDER === 'solasgpt' ? 'solasgpt' : 'gpt-4o-mini');
 const DEFAULT_SYSTEM_PROMPT = [
-  'You are SolasGPT, a helpful and respectful AI assistant inside a Scratch/TurboWarp project.',
-  'You are especially good at Scratch and TurboWarp coding help, including variables, lists, high scores, broadcasts, clones, movement, timers, and simple game logic.',
+  'You are SolasGPT, a helpful and respectful AI assistant focused on Minecraft gameplay, PvP, movement, survival, and building workflows.',
+  'Default to Minecraft context. Only switch to Scratch/TurboWarp help if the user explicitly asks for Scratch/TurboWarp.',
   'Give clear, useful answers with a bit of detail. When helpful, include a short explanation, steps, or an example instead of replying too briefly.',
   'Rules you must follow:',
   '1) Do not be negative, insulting, or abusive toward users.',
@@ -185,7 +185,7 @@ function buildSolasForwardMessage(sessionId, userMessageForModel) {
     .join('\n');
 
   const sections = [
-    'You are answering inside TurboWarp. Improve on previous attempts instead of repeating low-quality output.',
+    'You are answering for a Minecraft AI agent context. Improve on previous attempts instead of repeating low-quality output.',
     feedbackText ? `Recent explicit feedback to apply:\n${feedbackText}` : '',
     historyText ? `Recent conversation context:\n${historyText}` : '',
     `Current user request:\n${userMessageForModel}`
@@ -912,7 +912,7 @@ function phraseKnowledgeReply(userMessage, webContext) {
     return 'Hello! I am SolasGPT. Ask me a question and I will give a clear, friendly answer with useful detail when it helps.';
   }
   if (text.includes('what can you do')) {
-    return 'I can explain topics, summarize information, help with writing, answer factual questions, and guide you through Scratch or TurboWarp ideas step by step. If you want, I can also break an answer into simple parts or examples.';
+    return 'I can explain topics, summarize information, help with writing, answer factual questions, and guide you through Minecraft strategies, building, and combat ideas step by step. If you want, I can also break an answer into simple parts or examples.';
   }
   if (text.includes('explain')) {
     return `Sure — here is a clearer explanation of ${topic}: start with the main idea, then connect it to the important parts, and finally look at how it works in practice. If you want, I can also turn that into a step-by-step example.${sourceLine}`;
@@ -1020,11 +1020,83 @@ function clamp(value, min, max) {
   return Math.min(max, Math.max(min, value));
 }
 
+function createDefaultMcLearningProfile() {
+  return {
+    eatCriticalHp: 10,
+    eatRecoverHp: 12,
+    eatLockTicks: 12,
+    resourceAggressionRadius: 8,
+    updatedAt: Date.now()
+  };
+}
+
+function sanitizeMcLearningProfile(rawProfile) {
+  const defaults = createDefaultMcLearningProfile();
+  const incoming = rawProfile && typeof rawProfile === 'object' ? rawProfile : {};
+  return {
+    eatCriticalHp: clamp(Number(incoming.eatCriticalHp) || defaults.eatCriticalHp, 7, 14),
+    eatRecoverHp: clamp(Number(incoming.eatRecoverHp) || defaults.eatRecoverHp, 9, 16),
+    eatLockTicks: clamp(Number(incoming.eatLockTicks) || defaults.eatLockTicks, 6, 30),
+    resourceAggressionRadius: clamp(Number(incoming.resourceAggressionRadius) || defaults.resourceAggressionRadius, 4, 14),
+    updatedAt: Number.isFinite(Number(incoming.updatedAt)) ? Number(incoming.updatedAt) : Date.now()
+  };
+}
+
 function extractRequestedAmount(text, resourcePattern) {
   const m = text.match(new RegExp(`\\b(\\d+)\\s*(?:x\\s*)?(?:${resourcePattern})\\b`));
   if (!m) return null;
   const amount = Number(m[1]);
   return Number.isFinite(amount) && amount > 0 ? amount : null;
+}
+
+function parseCombatTargetPreference(text) {
+  const normalized = normalizeText(text).toLowerCase();
+  const match = normalized.match(/\b(?:fight|attack|kill|hunt|target)\s+([a-z0-9_ ]+?)(?:\s*,\s*type\s*=\s*[a-z0-9_]+|\s+type\s*=\s*[a-z0-9_]+|$)/i);
+  if (!match) return '';
+  return normalizeText(match[1].replace(/\b(the|a|an)\b/g, ' ')).toLowerCase();
+}
+
+function normalizeEntityLabel(text) {
+  return normalizeText(text)
+    .toLowerCase()
+    .replace(/entity\.minecraft\./g, '')
+    .replace(/minecraft:/g, '')
+    .replace(/[_:.\-]+/g, ' ');
+}
+
+function entityMatchesTargetPreference(preferredTarget, ...candidates) {
+  const wanted = normalizeEntityLabel(preferredTarget);
+  if (!wanted) return true;
+  const candidateText = candidates
+    .map((candidate) => normalizeEntityLabel(candidate))
+    .filter(Boolean)
+    .join(' ');
+  if (!candidateText) return false;
+  if (candidateText.includes(wanted)) return true;
+  const parts = wanted.split(' ').filter(Boolean);
+  return parts.length > 0 && parts.every((part) => candidateText.includes(part));
+}
+
+function pickBestMiningToolSlot(s, blockHint = '', objectiveText = '') {
+  const hint = `${normalizeText(blockHint).toLowerCase()} ${normalizeText(objectiveText).toLowerCase()}`;
+  const hasSword = s.swordSlot >= 0;
+  const hasAxe = s.axeSlot >= 0;
+  const hasPickaxe = s.pickaxeSlot >= 0;
+
+  if (/wool|cobweb|web|leaves|hay|bamboo|vine|kelp|sponge/.test(hint) && hasSword) {
+    return s.swordSlot;
+  }
+  if (/plank|log|wood|chest|barrel|ladder|fence|trapdoor|door/.test(hint) && hasAxe) {
+    return s.axeSlot;
+  }
+  if (/stone|deepslate|cobblestone|andesite|diorite|granite|obsidian|end_stone|ore|brick|terracotta|concrete|glass|sandstone/.test(hint) && hasPickaxe) {
+    return s.pickaxeSlot;
+  }
+
+  if (hasPickaxe) return s.pickaxeSlot;
+  if (hasAxe) return s.axeSlot;
+  if (hasSword) return s.swordSlot;
+  return s.blockSlot;
 }
 
 function getModeFromObjective(text) {
@@ -1036,7 +1108,7 @@ function getModeFromObjective(text) {
   if (/\b(base|hidden base|orbital strike cannon|cannon|hide the base|underground base|duper|villager hall|stealth)\b/.test(text)) return 'base';
   if (/\b(resource|farm|collect|get|gather|mining run|ore run|generator)\b/.test(text) && /\b(iron|redstone|diamond|gold|emerald)\b/.test(text)) return 'resource';
   if (/\b(clutch|water bucket|mlg|save|fall clutch)\b/.test(text)) return 'clutch';
-  if (/\b(bedwars|bed war|rush bed|defend bed|bridge to bed)\b/.test(text)) return 'bedwars';
+  if (/\b(bedwars|bed war|rush bed|defend bed|bridge to bed|fireball jump|tnt jump)\b/.test(text)) return 'bedwars';
   if (/\b(pvp|fight|combat|attack|kill|defeat|slay|duel|combo|w tap)\b/.test(text)) return 'pvp';
   if (/\b(build|place|bridge|tower|wall|house|base|speedbridge|godbridge|telly|telly ?bridge|tele ?bridge|andromeda|andromeda ?bridge)\b/.test(text)) return 'build';
   return 'general';
@@ -1076,6 +1148,16 @@ function normalizeState(state) {
   const bowSlot = Number(state.bowSlot);
   const windChargeSlot = Number(state.windChargeSlot);
   const windChargeCount = Number(state.windChargeCount);
+  const fireballSlot = Number(state.fireballSlot);
+  const fireballCount = Number(state.fireballCount);
+  const tntSlot = Number(state.tntSlot);
+  const tntCount = Number(state.tntCount);
+  const railSlot = Number(state.railSlot);
+  const railCount = Number(state.railCount);
+  const tntMinecartSlot = Number(state.tntMinecartSlot);
+  const tntMinecartCount = Number(state.tntMinecartCount);
+  const boatSlot = Number(state.boatSlot);
+  const boatCount = Number(state.boatCount);
   const shieldSlot = Number(state.shieldSlot);
   const combatPotionSlot = Number(state.combatPotionSlot);
   const nearestEnemyDistance = Number(state.nearestEnemyDistance);
@@ -1167,12 +1249,25 @@ function normalizeState(state) {
     bowSlot: Number.isFinite(bowSlot) ? bowSlot : -1,
     windChargeSlot: Number.isFinite(windChargeSlot) ? windChargeSlot : -1,
     windChargeCount: Number.isFinite(windChargeCount) ? windChargeCount : 0,
+    fireballSlot: Number.isFinite(fireballSlot) ? fireballSlot : -1,
+    fireballCount: Number.isFinite(fireballCount) ? fireballCount : 0,
+    tntSlot: Number.isFinite(tntSlot) ? tntSlot : -1,
+    tntCount: Number.isFinite(tntCount) ? tntCount : 0,
+    railSlot: Number.isFinite(railSlot) ? railSlot : -1,
+    railCount: Number.isFinite(railCount) ? railCount : 0,
+    tntMinecartSlot: Number.isFinite(tntMinecartSlot) ? tntMinecartSlot : -1,
+    tntMinecartCount: Number.isFinite(tntMinecartCount) ? tntMinecartCount : 0,
+    boatSlot: Number.isFinite(boatSlot) ? boatSlot : -1,
+    boatCount: Number.isFinite(boatCount) ? boatCount : 0,
     shieldSlot: Number.isFinite(shieldSlot) ? shieldSlot : -1,
     combatPotionSlot: Number.isFinite(combatPotionSlot) ? combatPotionSlot : -1,
     hotbarBlocks: Number.isFinite(hotbarBlocks) ? hotbarBlocks : 0,
     hasBlocks: Boolean(state.hasBlocks),
     hasWaterBucket: Boolean(state.hasWaterBucket),
-    hasMeleeWeapon: Boolean(state.hasMeleeWeapon),
+    hasMeleeWeapon: Boolean(state.hasMeleeWeapon)
+      || (Number.isFinite(swordSlot) && swordSlot >= 0)
+      || (Number.isFinite(axeSlot) && axeSlot >= 0)
+      || ((Number.isFinite(maceSlot) && maceSlot >= 0) && (Number.isFinite(maceCount) ? maceCount > 0 : false)),
     hasElytra: Boolean(state.hasElytra),
     ironCount: Number.isFinite(ironCount) ? ironCount : 0,
     redstoneCount: Number.isFinite(redstoneCount) ? redstoneCount : 0,
@@ -1239,9 +1334,18 @@ function normalizeState(state) {
 
 function buildMinecraftAction(objective, state = {}, sessionCtx = {}) {
   const text = normalizeText(objective).toLowerCase();
+  const isGeneral1Preset = /^(general\s*1|general1|gen\s*1|g1)$/.test(text);
   const enchantGoals = parseEnchantGoals(text);
   const mode = getModeFromObjective(text);
   const s = normalizeState(state);
+  const learnedProfile = sanitizeMcLearningProfile(sessionCtx.learning);
+  const eatCriticalHpThreshold = learnedProfile.eatCriticalHp;
+  const eatRecoverHpThreshold = Math.max(eatCriticalHpThreshold + 1, learnedProfile.eatRecoverHp);
+  const eatLockTicks = Math.max(6, learnedProfile.eatLockTicks);
+  const resourceAggressionRadius = learnedProfile.resourceAggressionRadius;
+  const bedGoal = sessionCtx.bedGoal && typeof sessionCtx.bedGoal === 'object' ? sessionCtx.bedGoal : {};
+  const bedObjectiveActive = Boolean(bedGoal.active);
+  const bedObjectiveCompleted = Boolean(bedGoal.completed);
   const action = {
     forward: false,
     back: false,
@@ -1261,6 +1365,9 @@ function buildMinecraftAction(objective, state = {}, sessionCtx = {}) {
 
   const noteParts = [];
   const pulse = sessionCtx.tickCounter || 0;
+  const requestedCombatTarget = parseCombatTargetPreference(text);
+  const wantsSpecificCombatTarget = requestedCombatTarget.length > 0;
+  const wantsPlayerCombatTarget = !wantsSpecificCombatTarget || /player|enemy|opponent/.test(requestedCombatTarget);
   const hasEnemyInCrosshair = s.focusedDistance > 0 && s.focusedEntity.length > 0 &&
     /player|zombie|skeleton|creeper|spider|enderman|villager|golem|iron_golem|slime|witch|phantom|blaze|piglin|hoglin|ravager|warden|ghast|guardian|pillager|vindicator|evoker|shulker|magma_cube|silverfish|endermite|vex|bee|wolf|cave_spider|drowned|husk|stray|bogged|breeze/i.test(s.focusedEntity);
   const lowHp = s.health <= 8;
@@ -1268,6 +1375,7 @@ function buildMinecraftAction(objective, state = {}, sessionCtx = {}) {
   const edgeRisk = s.fallDistance > 2.2 || (!s.onGround && s.verticalSpeed < -0.4);
   const hasClutchUtility = s.hasWaterBucket || s.hasBlocks;
   const enemyNearby = s.nearestEnemyDistance > 0 && s.nearestEnemyDistance < 8;
+  const enemyWithinResourceAggro = s.nearestEnemyDistance > 0 && s.nearestEnemyDistance < resourceAggressionRadius;
   const enemyVeryClose = s.nearestEnemyDistance > 0 && s.nearestEnemyDistance < 3;
   const severeDanger = s.health <= 3 || (enemyNearby && s.health <= 5 && s.nearestEnemyDistance < 3);
   const enemyGearAdvantage = s.nearestEnemyArmorPieces >= 3 && !s.hasMeleeWeapon;
@@ -1282,6 +1390,8 @@ function buildMinecraftAction(objective, state = {}, sessionCtx = {}) {
   const wantsWest = /\bwest\b/.test(text);
   const wantsTellyBridge = /\b(telly|telly ?bridge|tele ?bridge)\b/.test(text);
   const wantsAndromedaBridge = /\b(andromeda|andromeda ?bridge)\b/.test(text);
+  const wantsLongWaterTravel = /\b(cross|travel|go|reach|sail|boat)\b.*\b(water|ocean|sea|river|lake)\b|\b(ocean|sea|river|lake)\b.*\b(cross|travel|go|reach|sail|boat)\b/.test(text);
+  const hasBoat = s.boatSlot >= 0 && s.boatCount > 0;
   const wantsMobBlockDefense = /\b(block mobs|block mob|anti ?mob|wall off mobs|box up|mobs? from hitting)\b/.test(text);
   const hostilePressure = s.nearestHostileDistance > 0 && s.nearestHostileDistance < 3.5;
   const shouldBlockMobs = s.hasBlocks && hostilePressure && (mode === 'build' || mode === 'bedwars' || wantsMobBlockDefense);
@@ -1289,11 +1399,30 @@ function buildMinecraftAction(objective, state = {}, sessionCtx = {}) {
   // Pearl cooldown & mace tactics
   const pearlCooldownTicks = 100; // ~5 seconds at 20 TPS, prevent spam
   const currentTick = pulse;
+  const lowHpEatUntilTick = Number(sessionCtx.lowHpEatUntilTick || -1);
+  const lowHpEatLockActive = s.utilityFoodSlot >= 0 && lowHpEatUntilTick >= currentTick;
   const pearlUsedRecently = s.lastPearlUseTick >= 0 && (currentTick - s.lastPearlUseTick) < pearlCooldownTicks;
   const canUsePearl = s.pearlSlot >= 0 && s.pearlCount > 0 && !pearlUsedRecently;
+  const lastHealth = Number(sessionCtx.lastHealth);
+  const tookRecentDamage = Number.isFinite(lastHealth) && lastHealth > 0 && s.health > 0 && (lastHealth - s.health) >= 0.5;
+  const lastDamageTick = Number(sessionCtx.lastDamageTick || -9999);
+  const damageAggroActive = tookRecentDamage || ((currentTick - lastDamageTick) <= 14);
+  const retaliationTargetName = normalizeText(sessionCtx.retaliationTargetName || '');
+  const retaliationUntilTick = Number(sessionCtx.retaliationUntilTick || -1);
+  const retaliationActive = retaliationTargetName.length > 0
+    && retaliationUntilTick >= currentTick
+    && s.nearestEnemyDistance > 0
+    && s.nearestEnemyDistance < 24
+    && normalizeText(s.nearestEnemyName || '').toLowerCase() === retaliationTargetName.toLowerCase();
+  const potCooldownTicks = 36;
+  const lastPotTick = Number(sessionCtx.lastPotTick || -9999);
+  const potionUsedRecently = (currentTick - lastPotTick) < potCooldownTicks;
   const hasMace = s.maceSlot >= 0 && s.maceCount > 0;
   const hasBreachMace = s.breachMaceSlot >= 0 && s.maceBreachLevel > 0 && s.maceCount > 0;
   const hasMaceAndElytra = hasMace && s.hasElytra;
+  const hasWindCharge = s.windChargeSlot >= 0 && s.windChargeCount > 0;
+  const hasCrystalCombatKit = s.obsidianSlot >= 0 && s.endCrystalSlot >= 0 && s.obsidianCount > 0 && s.endCrystalCount > 0;
+  const hasRangedBow = s.bowSlot >= 0;
   const enemyHasShield = s.nearestEnemyHasShield && enemyNearby;
   const breachSwapNeeded = enemyHasShield && hasBreachMace && s.swordSlot >= 0;
   const missingCombatEffects = !s.hasSpeedEffect || !s.hasStrengthEffect;
@@ -1310,6 +1439,17 @@ function buildMinecraftAction(objective, state = {}, sessionCtx = {}) {
     + (needsCrystalKitLoot ? s.nearbyDroppedCrystalCount : 0)
     + s.nearbyDroppedGappleCount);
   const shouldLootNow = nearbyNeededLoot > 0 && s.nearestDroppedItemDistance > 0 && s.nearestDroppedItemDistance < 12 && !enemyVeryClose && !severeDanger;
+  const valuableDroppedLootCount =
+    s.nearbyDroppedTotemCount
+    + s.nearbyDroppedPearlCount
+    + s.nearbyDroppedPotionCount
+    + s.nearbyDroppedGappleCount
+    + s.nearbyDroppedCrystalCount;
+  const shouldForceValuableLoot = valuableDroppedLootCount > 0
+    && s.nearestDroppedItemDistance > 0
+    && s.nearestDroppedItemDistance < 10
+    && !edgeRisk
+    && s.health > 4;
 
   const lootCross = (s.lookX * s.nearestDroppedItemDz) - (s.lookZ * s.nearestDroppedItemDx);
   const lootYaw = clamp(Math.round(lootCross * 6), -7, 7);
@@ -1334,6 +1474,32 @@ function buildMinecraftAction(objective, state = {}, sessionCtx = {}) {
     return { action, note: noteParts.join(' '), mode };
   }
 
+  if (retaliationActive && !severeDanger && s.hasMeleeWeapon) {
+    const retaliationDist = s.nearestEnemyDistance;
+    const targetYaw = Math.atan2(-s.nearestEnemyDx, s.nearestEnemyDz) * (180 / Math.PI);
+    let retaliationRawYaw = targetYaw - s.yaw;
+    while (retaliationRawYaw > 180) retaliationRawYaw -= 360;
+    while (retaliationRawYaw <= -180) retaliationRawYaw += 360;
+    const retaliationYawDelta = clamp(retaliationRawYaw / 4, -8, 8);
+    const retaliationAligned = hasEnemyInCrosshair || Math.abs(retaliationRawYaw) < 24;
+    const retaliationAttackWindow = retaliationDist > 0 && retaliationDist <= 3.35 && retaliationAligned;
+
+    action.hotbarSlot = s.swordSlot >= 0 ? s.swordSlot : s.axeSlot;
+    action.attack = retaliationAttackWindow;
+    action.use = false;
+    action.forward = retaliationDist > 2.6;
+    action.back = retaliationDist < 1.5;
+    action.left = retaliationDist >= 2.0 && retaliationDist <= 3.2 && (pulse % 6 < 3);
+    action.right = retaliationDist >= 2.0 && retaliationDist <= 3.2 && (pulse % 6 >= 3);
+    action.sprint = retaliationDist > 3.0 && Math.abs(retaliationRawYaw) < 70;
+    action.sneak = false;
+    action.jump = false;
+    action.yawDelta = retaliationYawDelta;
+    action.pitchDelta = clamp((-s.pitch) / 4, -5, 5);
+    action.durationTicks = 4;
+    noteParts.push(`Retaliation lock: counter-attacking ${retaliationTargetName} until threat is eliminated.`);
+  }
+
   if (mode === 'clutch' || edgeRisk) {
     action.sneak = true;
     action.back = true;
@@ -1347,13 +1513,102 @@ function buildMinecraftAction(objective, state = {}, sessionCtx = {}) {
   }
 
   if (mode === 'bedwars') {
-    if (hasEnemyInCrosshair && s.focusedDistance > 0 && s.focusedDistance < 3.4) {
+    const wantsExplosiveTravel = /\b(fireball ?jump|tnt ?jump|cross|other side|fire ?charge)\b/.test(text);
+    const hasFireball = s.fireballSlot >= 0 && s.fireballCount > 0;
+    const hasTnt = s.tntSlot >= 0 && s.tntCount > 0;
+    const canFireballJump = hasFireball && wantsExplosiveTravel && !enemyVeryClose;
+    const canTntJump = hasTnt && wantsExplosiveTravel && !hasFireball && !enemyVeryClose;
+    const hasBedwarsTarget = s.nearestEnemyDistance > 0 && s.nearestEnemyDistance < 20;
+    let bedwarsRawYaw = 0;
+    let bedwarsAimYawDelta = 0;
+    if (hasBedwarsTarget && (Math.abs(s.nearestEnemyDx) > 0.05 || Math.abs(s.nearestEnemyDz) > 0.05)) {
+      const targetYaw = Math.atan2(-s.nearestEnemyDx, s.nearestEnemyDz) * (180 / Math.PI);
+      bedwarsRawYaw = targetYaw - s.yaw;
+      while (bedwarsRawYaw > 180) bedwarsRawYaw -= 360;
+      while (bedwarsRawYaw <= -180) bedwarsRawYaw += 360;
+      bedwarsAimYawDelta = clamp(bedwarsRawYaw / 4, -7, 7);
+    }
+
+    if (bedObjectiveActive && bedObjectiveCompleted) {
+      action.forward = false;
+      action.back = false;
+      action.left = false;
+      action.right = false;
+      action.sprint = false;
+      action.sneak = true;
+      action.use = false;
+      action.attack = false;
+      action.hotbarSlot = s.swordSlot >= 0 ? s.swordSlot : s.axeSlot;
+      action.durationTicks = 8;
+      noteParts.push('Bed objective complete: bed destroyed. Holding and awaiting next objective.');
+    } else if (hasEnemyInCrosshair && s.focusedDistance > 0 && s.focusedDistance < 3.4) {
       action.attack = true;
       action.sprint = true;
       action.forward = true;
       action.hotbarSlot = s.swordSlot >= 0 ? s.swordSlot : s.axeSlot;
+      action.yawDelta = bedwarsAimYawDelta;
+      action.pitchDelta = clamp((-s.pitch) / 3, -6, 6);
       action.durationTicks = 6;
       noteParts.push('Bedwars combat engage.');
+    } else if (bedObjectiveActive && s.bedNearby && s.nearestBedDistance >= 0 && s.nearestBedDistance < 6.5) {
+      const breakToolSlot = pickBestMiningToolSlot(s, s.nearestBedDefenseBlock, text);
+      action.hotbarSlot = breakToolSlot;
+      action.attack = true;
+      action.use = false;
+      action.sneak = s.nearestBedDistance < 2.5;
+      action.sprint = false;
+      action.forward = s.nearestBedDistance > 2.2;
+      action.back = s.nearestBedDistance < 1.4;
+      action.left = false;
+      action.right = false;
+      action.pitchDelta = clamp((35 - s.pitch) / 3, -5, 5);
+      action.yawDelta = bedwarsAimYawDelta;
+      action.durationTicks = 5;
+      noteParts.push(`Bed break phase: using best tool for ${s.nearestBedDefenseBlock || 'defense block'}.`);
+    } else if (canFireballJump) {
+      // Fire charge jump: aim down ~55-70°, right-click to throw charge at feet, jump simultaneously
+      action.sprint = true;
+      action.forward = true;
+      action.hotbarSlot = s.fireballSlot;
+      if (!s.onGround && s.verticalSpeed > 0.15) {
+        // Rising from explosion — coast forward, start looking ahead again
+        action.pitchDelta = s.pitch > 20 ? -10 : 0;
+        action.durationTicks = 5;
+        noteParts.push('Fireball jump: airborne, sprinting to target.');
+      } else if (s.pitch < 55) {
+        // Aim down toward feet first
+        action.pitchDelta = 14;
+        action.durationTicks = 3;
+        noteParts.push('Fireball jump: aiming down...');
+      } else {
+        // Looking ~55°+ down — throw the fire charge and jump at the same time
+        action.use = true;
+        action.jump = true;
+        action.pitchDelta = -12;
+        action.durationTicks = 4;
+        noteParts.push('Fireball jump: throwing charge and jumping!');
+      }
+    } else if (canTntJump) {
+      // TNT jump: aim straight down (~75-90°), place TNT, jump before it blows
+      action.sprint = true;
+      action.forward = true;
+      action.hotbarSlot = s.tntSlot;
+      if (!s.onGround && s.verticalSpeed > 0.15) {
+        action.pitchDelta = s.pitch > 20 ? -10 : 0;
+        action.durationTicks = 5;
+        noteParts.push('TNT jump: airborne, sprinting to target.');
+      } else if (s.pitch < 75) {
+        action.pitchDelta = 18;
+        action.durationTicks = 3;
+        noteParts.push('TNT jump: aiming straight down...');
+      } else {
+        // Aimed straight down — place TNT and jump immediately
+        action.use = true;
+        action.jump = true;
+        action.pitchDelta = -12;
+        action.durationTicks = 3;
+        noteParts.push('TNT jump: placing and jumping!');
+      }
     } else {
       action.forward = true;
       action.sprint = !lowHp;
@@ -1379,7 +1634,9 @@ function buildMinecraftAction(objective, state = {}, sessionCtx = {}) {
       }
     }
 
-    if (pulse % 3 === 0) action.yawDelta = (pulse % 2 === 0) ? 4 : -4;
+    if (!hasBedwarsTarget && !wantsExplosiveTravel && pulse % 3 === 0) {
+      action.yawDelta = (pulse % 2 === 0) ? 4 : -4;
+    }
   }
 
   if (mode === 'pvp') {
@@ -1390,13 +1647,24 @@ function buildMinecraftAction(objective, state = {}, sessionCtx = {}) {
     const pvpDuration = 4; // slightly slower updates to reduce overshoot and path jitter
 
     // ── Pick best target (player first, then hostile mob) ────────────────────
-    const hasMobTarget    = s.nearestHostileDistance > 0 && s.nearestHostileDistance < 20;
-    const hasPlayerTarget = s.nearestEnemyDistance   > 0 && s.nearestEnemyDistance   < 24;
+    const playerTargetMatches = s.nearestEnemyDistance > 0
+      && s.nearestEnemyDistance < 24
+      && (!wantsSpecificCombatTarget
+        || entityMatchesTargetPreference(requestedCombatTarget, s.nearestEnemyName)
+        || (wantsPlayerCombatTarget && /player|enemy|opponent/.test(requestedCombatTarget)));
+    const mobTargetMatches = s.nearestHostileDistance > 0
+      && s.nearestHostileDistance < 20
+      && (!wantsSpecificCombatTarget
+        || entityMatchesTargetPreference(requestedCombatTarget, s.nearestHostile, s.focusedEntity));
+    const usePlayerTarget = playerTargetMatches && (wantsPlayerCombatTarget || !mobTargetMatches);
+    const hasMobTarget = mobTargetMatches;
+    const hasPlayerTarget = usePlayerTarget;
     const targetDx   = hasPlayerTarget ? s.nearestEnemyDx   : (hasMobTarget ? s.nearestHostileDx   : 0);
     const targetDz   = hasPlayerTarget ? s.nearestEnemyDz   : (hasMobTarget ? s.nearestHostileDz   : 0);
     const targetDist = hasPlayerTarget ? s.nearestEnemyDistance : (hasMobTarget ? s.nearestHostileDistance : -1);
     const hasTarget  = targetDist > 0;
-    const targetName = s.nearestEnemyName || s.nearestHostile || 'target';
+    const targetName = hasPlayerTarget ? (s.nearestEnemyName || 'player') : (s.nearestHostile || s.focusedEntity || 'target');
+    const windMaceComboStage = Number(sessionCtx.windMaceComboStage || 0);
 
     // ── Compute yaw correction via atan2 (stable lock-on) ────────────────────
     // MC yaw: 0=south(+Z), 90=west(−X), −90=east(+X), 180=north(−Z)
@@ -1414,76 +1682,60 @@ function buildMinecraftAction(objective, state = {}, sessionCtx = {}) {
     }
     // Use rawYaw (total error) for alignment checks, not per-tick aimYawDelta
     const isAligned = hasEnemyInCrosshair || (hasTarget && Math.abs(rawYaw) < 22);
-    const canStrafe = hasTarget && Math.abs(rawYaw) < 24 && targetDist >= 2.0 && targetDist < 4.3;
+    const canStrafe = hasTarget && Math.abs(rawYaw) < 12 && targetDist >= 2.0 && targetDist < 3.5;
     const isFacing  = hasTarget && Math.abs(rawYaw) < 60; // broad facing check for movement
-    const attackWindow = hasTarget && isAligned && targetDist <= 4.45;
-    const holdGroundRange = hasTarget && targetDist >= 1.9 && targetDist <= 3.2;
-    const shouldCloseGap = hasTarget && targetDist > 3.2 && isFacing;
-
-    // Low-HP retreat: back away and eat (pearl/windcharge handled below)
-    const shouldRetreat = hasTarget && s.health <= 6 && s.health > 0;
+    const attackWindow = hasTarget && isAligned && targetDist <= 3.35;
+    const holdGroundRange = hasTarget && targetDist >= 3.0 && targetDist <= 3.7;
+    // User-configured aggression profile: keep fighting instead of low-HP retreating.
+    const shouldRetreat = false;
+    const enemyHoldingSword = /_sword|trident/.test(s.nearestEnemyMainItem || '');
+    const comboPressure = hasTarget && targetDist < 3.1 && (tookRecentDamage || damageAggroActive);
+    const preferredKiteRange = hasTarget && targetDist >= 3.1 && targetDist <= 4.1;
+    const shouldCloseGap = hasTarget && targetDist > 4.1 && (isFacing || damageAggroActive);
+    const pressureCycle = pulse % 10;
+    const burstWindow = pressureCycle < 9; // ~90% combo pressure window
+    const shouldBurstIn = hasTarget && !shouldRetreat && burstWindow && isFacing && (targetDist > 2.4 && targetDist <= 4.8);
+    const shouldStepOut = hasTarget && !shouldRetreat && (comboPressure || pressureCycle >= 4) && targetDist < 3.0;
+    const retaliateWindow = damageAggroActive && hasEnemyInCrosshair && s.focusedDistance > 0 && s.focusedDistance <= 3.35;
+    const shouldComboPush = hasTarget && !shouldRetreat && isAligned && burstWindow && targetDist >= 2.6 && targetDist <= 3.4;
 
     action.hotbarSlot  = s.swordSlot >= 0 ? s.swordSlot : s.axeSlot;
-    action.attack      = attackWindow && !shouldRetreat;
-    action.forward     = shouldCloseGap && !shouldRetreat;
-    action.back        = shouldRetreat || (hasTarget && targetDist < 1.45);
-    action.sprint      = hasTarget && targetDist > 4.8 && isFacing && !lowHp && !shouldRetreat;
+    action.attack      = (attackWindow || retaliateWindow || shouldComboPush) && !shouldRetreat;
+    action.forward     = (shouldCloseGap || shouldBurstIn || shouldComboPush) && !shouldRetreat;
+    action.back        = shouldRetreat || shouldStepOut || (hasTarget && !shouldBurstIn && !preferredKiteRange && targetDist < 3.1);
+    action.sprint      = hasTarget && (targetDist > 4.0 || shouldBurstIn || shouldComboPush) && isFacing && !lowHp && !shouldRetreat;
     // Strafe: only while NOT strongly turning (use rawYaw gate) and within engagement range
-    action.left        = strafeLeft  && canStrafe && !shouldRetreat;
-    action.right       = !strafeLeft && canStrafe && !shouldRetreat;
+    action.left        = strafeLeft  && (canStrafe || preferredKiteRange) && !shouldRetreat;
+    action.right       = !strafeLeft && (canStrafe || preferredKiteRange) && !shouldRetreat;
     action.jump        = false;
     // When scanning with no target, rotate slowly; when targeting, apply per-tick correction
     action.yawDelta    = hasTarget ? aimYawDelta : 4;
-    action.pitchDelta  = 0; // no vertical oscillation in melee
+    action.pitchDelta  = hasTarget ? clamp((-s.pitch) / pvpDuration, -5, 5) : 0;
     action.durationTicks = pvpDuration;
 
-    if (holdGroundRange && !shouldRetreat) {
+    if (holdGroundRange && !shouldRetreat && !shouldBurstIn) {
       action.forward = false;
       action.back = false;
       action.sprint = false;
     }
 
-    if (attackWindow && !shouldRetreat) {
-      // Attack priority over movement: stop pushing through the target while swinging
-      action.forward = false;
+    if ((attackWindow || shouldComboPush) && !shouldRetreat) {
+      // Stay close enough to continue landing hits, then micro-disengage briefly.
+      action.forward = targetDist > 2.55;
       action.back = false;
-      action.sprint = false;
+      action.sprint = targetDist > 3.0;
+      if (pulse % 6 >= 4 && targetDist < 2.8) {
+        action.back = true;
+        action.forward = false;
+        action.sprint = false;
+      }
     }
 
     noteParts.push(hasTarget
-      ? `PVP: lock ${targetName} dist=${targetDist.toFixed(1)} err=${rawYaw.toFixed(0)}° aligned=${isAligned} hold=${holdGroundRange}`
+      ? `PVP: lock ${targetName} dist=${targetDist.toFixed(1)} err=${rawYaw.toFixed(0)}° aligned=${isAligned} kite=${preferredKiteRange} burst=${shouldBurstIn}`
       : 'PVP: scanning for target.');
 
-    // ── Low HP retreat: pearl away OR windcharge up + eat ──────────────────
-    if (shouldRetreat) {
-      action.forward = false;
-      action.sprint  = false;
-      action.back    = true;
-      action.attack  = false;
-      action.sneak   = false;
-      const hasWindCharge = s.windChargeSlot >= 0 && s.windChargeCount > 0;
-      if (canUsePearl) {
-        // Pearl away from enemy (throw toward safe direction)
-        action.use       = true;
-        action.hotbarSlot = s.pearlSlot;
-        action.left      = false;
-        action.right     = false;
-        noteParts.push(`Low HP pearl escape: HP=${s.health}.`);
-      } else if (hasWindCharge) {
-        // Windcharge: throw at ground to boost upward, then eat
-        action.use       = true;
-        action.hotbarSlot = s.windChargeSlot;
-        action.pitchDelta = 80; // look straight down to windcharge below you
-        noteParts.push(`Low HP windcharge escape: HP=${s.health}.`);
-      } else if (s.utilityFoodSlot >= 0 && s.food < 18) {
-        // No escape item: eat while backing up
-        action.use       = true;
-        action.hotbarSlot = s.utilityFoodSlot;
-        noteParts.push(`Low HP eating while retreating: HP=${s.health}.`);
-      } else {
-        noteParts.push(`Low HP retreating: HP=${s.health}, no escape item.`);
-      }
-    }
+    // Low-HP retreat removed by request: stay in fight and rely on timed eating.
 
     // ── Bow: shoot enemy when far away (> 6 blocks) ───────────────────────────
     const hasBow = s.bowSlot >= 0;
@@ -1512,13 +1764,24 @@ function buildMinecraftAction(objective, state = {}, sessionCtx = {}) {
     // ── Shield: raise shield when enemy approaches for a melee strike ────────
     const hasShield = s.shieldSlot >= 0;
     const enemyAboutToStrike = hasTarget && targetDist < 2.5 && s.nearestEnemyHasMeleeWeapon;
+    const shouldShieldPressure = hasShield
+      && !shouldRetreat
+      && !bowRangeFight
+      && hasTarget
+      && targetDist < 3.2
+      && (enemyAboutToStrike || enemyHoldingSword || comboPressure)
+      && (pulse % 5 >= 2);
     // Block every other strafe window to mix offense and defense
-    if (hasShield && enemyAboutToStrike && (strafePhase % 3 === 1) && !shouldRetreat && !bowRangeFight) {
+    if (shouldShieldPressure) {
       // Shield blocks with right-click (use key) while it is in the offhand (placed there by Java)
       action.use    = true;
-      action.sneak  = true; // crouching while shielding
+      action.sneak  = false;
       action.attack = false;
-      noteParts.push('Shield: blocking incoming melee strike.');
+      action.forward = false;
+      action.back = targetDist < 2.7;
+      noteParts.push(enemyHoldingSword
+        ? 'Shield: blocking sword pressure while resetting spacing.'
+        : 'Shield: blocking combo pressure and resetting spacing.');
     }
 
     if (!s.hasMeleeWeapon && s.focusedDistance > 0 && s.focusedDistance < 2.4) {
@@ -1545,7 +1808,7 @@ function buildMinecraftAction(objective, state = {}, sessionCtx = {}) {
         action.left = false;
         action.right = false;
         action.sprint = false;
-        action.sneak = true;
+        action.sneak = false;
         action.durationTicks = 4;
         noteParts.push('Severe danger + crystal spam: pearling away to escape.');
       } else if (canSafeAnchor) {
@@ -1557,7 +1820,7 @@ function buildMinecraftAction(objective, state = {}, sessionCtx = {}) {
         action.left = false;
         action.right = false;
         action.sprint = false;
-        action.sneak = true;
+        action.sneak = false;
         action.durationTicks = 4;
         noteParts.push('Crystal spam detected: safe-anchor defensive cycle.');
       } else if (pearlUsedRecently) {
@@ -1566,8 +1829,100 @@ function buildMinecraftAction(objective, state = {}, sessionCtx = {}) {
     }
 
 
-    // Mace breach swap: if enemy has shield and we have mace, swap to mace periodically
-    if (breachSwapNeeded && (pulse % 8 === 0)) {
+    const canAxeShieldBreak = enemyHasShield
+      && s.axeSlot >= 0
+      && hasTarget
+      && targetDist > 0
+      && targetDist <= 3.8
+      && isAligned
+      && !shouldRetreat;
+
+    const canCartPvp = hasTarget
+      && !shouldRetreat
+      && s.railSlot >= 0
+      && s.railCount > 0
+      && s.tntMinecartSlot >= 0
+      && s.tntMinecartCount > 0
+      && s.flintAndSteelSlot >= 0
+      && s.flintAndSteelCount > 0
+      && targetDist > 1.8
+      && targetDist <= 5.0
+      && isAligned;
+
+    const canMaceLeap = hasTarget
+      && hasMace
+      && !shouldRetreat
+      && targetDist > 3.0
+      && targetDist <= 5.3
+      && isFacing
+      && !hasWindCharge;
+
+    const canMaceBaitStrafe = hasTarget
+      && hasMace
+      && !shouldRetreat
+      && targetDist >= 2.4
+      && targetDist <= 3.6
+      && isAligned
+      && !enemyHasShield;
+
+    if (canAxeShieldBreak) {
+      action.hotbarSlot = s.axeSlot;
+      action.attack = true;
+      action.forward = targetDist > 2.3;
+      action.back = false;
+      action.sprint = targetDist > 2.7;
+      action.use = false;
+      noteParts.push('Shield counter: switching to axe to disable enemy shield.');
+    } else if (canCartPvp) {
+      const cartPhase = pulse % 6;
+      action.attack = false;
+      action.forward = false;
+      action.back = (cartPhase === 4 || cartPhase === 5);
+      action.left = false;
+      action.right = false;
+      action.sprint = false;
+      action.jump = false;
+      action.durationTicks = 4;
+      action.pitchDelta = clamp((68 - s.pitch) / 2, -8, 8);
+      if (cartPhase <= 1) {
+        action.use = true;
+        action.hotbarSlot = s.railSlot;
+        noteParts.push('Cart PvP: placing rail under pressure line.');
+      } else if (cartPhase <= 3) {
+        action.use = true;
+        action.hotbarSlot = s.tntMinecartSlot;
+        noteParts.push('Cart PvP: placing TNT minecart on rail.');
+      } else {
+        action.use = true;
+        action.hotbarSlot = s.flintAndSteelSlot;
+        noteParts.push('Cart PvP: igniting minecart and backing out.');
+      }
+    } else if (canMaceLeap && pulse % 7 < 3) {
+      action.hotbarSlot = hasBreachMace && enemyHasShield ? s.breachMaceSlot : s.maceSlot;
+      action.attack = false;
+      action.forward = true;
+      action.back = false;
+      action.left = false;
+      action.right = false;
+      action.sprint = true;
+      action.jump = s.onGround;
+      action.use = false;
+      action.pitchDelta = clamp((-12 - s.pitch) / pvpDuration, -8, 8);
+      action.durationTicks = 4;
+      noteParts.push('Mace strategy: leap engage for burst impact window.');
+    } else if (canMaceBaitStrafe && pulse % 6 >= 3) {
+      action.hotbarSlot = hasBreachMace && enemyHasShield ? s.breachMaceSlot : s.maceSlot;
+      action.attack = (pulse % 2) === 0;
+      action.forward = false;
+      action.back = false;
+      action.left = (pulse % 4) < 2;
+      action.right = !action.left;
+      action.sprint = false;
+      action.use = false;
+      action.durationTicks = 4;
+      noteParts.push('Mace strategy: bait strafe timing before swing.');
+    } else if (breachSwapNeeded && (pulse % 8 === 0)) {
+      // Mace breach swap: if enemy has shield and we have breach mace, swap to mace periodically
       action.hotbarSlot = s.breachMaceSlot;
       action.attack = true;
       noteParts.push(`Mace breach swap: Breach ${s.maceBreachLevel} shield break.`);
@@ -1592,9 +1947,23 @@ function buildMinecraftAction(objective, state = {}, sessionCtx = {}) {
     if (/\b(web|cobweb|web trap)\b/.test(text) && s.cobwebSlot >= 0 && s.cobwebCount > 0 && enemyVeryClose) {
       action.use = true;
       action.hotbarSlot = s.cobwebSlot;
-      action.sneak = true;
+      action.sneak = false;
       action.durationTicks = 4;
       noteParts.push('Web trap attempt active.');
+    }
+
+    // Auto-web in close lock if we have cobwebs, even without explicit prompt.
+    if (hasTarget && targetDist <= 2.2 && isAligned && s.cobwebSlot >= 0 && s.cobwebCount > 0 && !shouldRetreat && pulse % 9 === 0) {
+      action.attack = false;
+      action.use = true;
+      action.hotbarSlot = s.cobwebSlot;
+      action.sneak = false;
+      action.forward = false;
+      action.back = false;
+      action.left = false;
+      action.right = false;
+      action.durationTicks = 4;
+      noteParts.push('PVP strategy: auto-web trap placed.');
     }
 
     if (/\b(crit|critical|crit out)\b/.test(text)) {
@@ -1604,15 +1973,31 @@ function buildMinecraftAction(objective, state = {}, sessionCtx = {}) {
       noteParts.push('Critical-hit jump timing active.');
     }
 
-    if (canPotUp && !enemyVeryClose && !severeDanger && !shouldLootNow && pulse % 5 === 0) {
+    // Auto-crit cadence while in melee range.
+    if (hasTarget && targetDist > 2.0 && targetDist < 3.3 && isAligned && !shouldRetreat && pulse % 6 === 0) {
+      action.jump = true;
+      action.attack = true;
+      action.hotbarSlot = s.swordSlot >= 0 ? s.swordSlot : s.axeSlot;
+      noteParts.push('PVP strategy: crit jump cadence.');
+    }
+
+    const canSafePotInFight = canPotUp
+      && !potionUsedRecently
+      && !enemyVeryClose
+      && !severeDanger
+      && !shouldLootNow
+      && (!hasTarget || targetDist > 4.0 || (targetDist > 3.1 && Math.abs(rawYaw) > 28));
+    if (canSafePotInFight) {
       action.attack = false;
       action.use = true;
-      action.sneak = true;
+      action.sneak = false;
       action.sprint = false;
       action.forward = false;
-      action.back = true;
+      action.back = false;
+      action.left = false;
+      action.right = false;
       action.hotbarSlot = s.combatPotionSlot;
-      action.durationTicks = 5;
+      action.durationTicks = 4;
       noteParts.push('PVP upkeep: potting for missing combat effects.');
     } else if (shouldLootNow && !severeDanger) {
       action.attack = false;
@@ -1627,6 +2012,52 @@ function buildMinecraftAction(objective, state = {}, sessionCtx = {}) {
       action.durationTicks = 6;
       noteParts.push('PVP loot pickup: collecting needed dropped items.');
     }
+
+    const canWindMaceCombo = hasTarget
+      && hasMace
+      && hasWindCharge
+      && !shouldRetreat
+      && targetDist >= 1.8
+      && targetDist <= 6.2;
+    if (canWindMaceCombo && windMaceComboStage === 1) {
+      action.use = false;
+      action.attack = false;
+      action.hotbarSlot = hasBreachMace && enemyHasShield ? s.breachMaceSlot : s.maceSlot;
+      action.forward = true;
+      action.back = false;
+      action.sprint = true;
+      action.left = false;
+      action.right = false;
+      action.jump = false;
+      action.pitchDelta = clamp((-14 - s.pitch) / pvpDuration, -8, 8);
+      action.durationTicks = 4;
+      noteParts.push('Wind-mace combo: reacquiring target after self-launch.');
+    } else if (canWindMaceCombo && windMaceComboStage === 2) {
+      action.use = false;
+      action.attack = true;
+      action.hotbarSlot = hasBreachMace && enemyHasShield ? s.breachMaceSlot : s.maceSlot;
+      action.forward = targetDist > 2.1;
+      action.back = false;
+      action.sprint = true;
+      action.left = false;
+      action.right = false;
+      action.jump = false;
+      action.durationTicks = 4;
+      noteParts.push('Wind-mace combo: mace strike phase.');
+    } else if (canWindMaceCombo && windMaceComboStage === 0 && s.onGround && (pulse % 8 === 2)) {
+      action.use = true;
+      action.attack = false;
+      action.hotbarSlot = s.windChargeSlot;
+      action.forward = false;
+      action.back = false;
+      action.left = false;
+      action.right = false;
+      action.sprint = false;
+      action.jump = true;
+      action.pitchDelta = clamp((87 - s.pitch) / 2, -12, 12);
+      action.durationTicks = 4;
+      noteParts.push('Wind-mace combo: looking down and firing windcharge under self.');
+    }
   }
 
   if (mode === 'crystal') {
@@ -1635,27 +2066,40 @@ function buildMinecraftAction(objective, state = {}, sessionCtx = {}) {
     action.durationTicks = 5;
 
     // Flat-ground CPvP tuning: stabilize movement and keep focus on target.
-    const crystalHasTarget = s.nearestEnemyDistance > 0 && s.nearestEnemyDistance < 24;
-    const crystalDist = crystalHasTarget ? s.nearestEnemyDistance : -1;
+    const crystalPlayerTarget = s.nearestEnemyDistance > 0
+      && s.nearestEnemyDistance < 24
+      && (!wantsSpecificCombatTarget
+        || entityMatchesTargetPreference(requestedCombatTarget, s.nearestEnemyName)
+        || (wantsPlayerCombatTarget && /player|enemy|opponent/.test(requestedCombatTarget)));
+    const crystalMobTarget = s.nearestHostileDistance > 0
+      && s.nearestHostileDistance < 20
+      && (!wantsSpecificCombatTarget
+        || entityMatchesTargetPreference(requestedCombatTarget, s.nearestHostile, s.focusedEntity));
+    const crystalUsePlayerTarget = crystalPlayerTarget && (wantsPlayerCombatTarget || !crystalMobTarget);
+    const crystalHasTarget = crystalUsePlayerTarget || crystalMobTarget;
+    const crystalDist = crystalUsePlayerTarget ? s.nearestEnemyDistance : (crystalMobTarget ? s.nearestHostileDistance : -1);
     let crystalRawYaw = 0;
     let crystalYawDelta = 0;
-    if (crystalHasTarget && (Math.abs(s.nearestEnemyDx) > 0.05 || Math.abs(s.nearestEnemyDz) > 0.05)) {
-      const targetYaw = Math.atan2(-s.nearestEnemyDx, s.nearestEnemyDz) * (180 / Math.PI);
+    const crystalTargetDx = crystalUsePlayerTarget ? s.nearestEnemyDx : (crystalMobTarget ? s.nearestHostileDx : 0);
+    const crystalTargetDz = crystalUsePlayerTarget ? s.nearestEnemyDz : (crystalMobTarget ? s.nearestHostileDz : 0);
+    if (crystalHasTarget && (Math.abs(crystalTargetDx) > 0.05 || Math.abs(crystalTargetDz) > 0.05)) {
+      const targetYaw = Math.atan2(-crystalTargetDx, crystalTargetDz) * (180 / Math.PI);
       crystalRawYaw = targetYaw - s.yaw;
       while (crystalRawYaw > 180) crystalRawYaw -= 360;
       while (crystalRawYaw <= -180) crystalRawYaw += 360;
       crystalYawDelta = clamp(crystalRawYaw / action.durationTicks, -7, 7);
     }
-    const crystalAligned = crystalHasTarget && Math.abs(crystalRawYaw) < 26;
-    const crystalHoldRange = crystalHasTarget && crystalDist >= 2.6 && crystalDist <= 4.8;
-    const crystalNeedClose = crystalHasTarget && crystalDist > 4.8 && Math.abs(crystalRawYaw) < 65;
-    const crystalTooClose = crystalHasTarget && crystalDist < 2.1;
+    const crystalAligned = crystalHasTarget && Math.abs(crystalRawYaw) < 18;
+    const crystalHoldRange = crystalHasTarget && crystalDist >= 2.4 && crystalDist <= 4.6;
+    const crystalNeedClose = crystalHasTarget && crystalDist > 4.4 && Math.abs(crystalRawYaw) < 65;
+    const crystalTooClose = crystalHasTarget && crystalDist < 1.9;
 
     action.yawDelta = crystalHasTarget ? crystalYawDelta : 3;
+    action.pitchDelta = crystalHasTarget ? clamp((-s.pitch) / action.durationTicks, -5, 5) : 0;
     action.forward = crystalNeedClose;
     action.back = crystalTooClose;
-    action.left = crystalHasTarget && crystalAligned && crystalDist >= 2.6 && crystalDist < 5.5 && (pulse % 4 < 2);
-    action.right = crystalHasTarget && crystalAligned && crystalDist >= 2.6 && crystalDist < 5.5 && (pulse % 4 >= 2);
+    action.left = crystalHasTarget && crystalAligned && crystalDist >= 2.8 && crystalDist < 4.6 && (pulse % 4 < 2);
+    action.right = crystalHasTarget && crystalAligned && crystalDist >= 2.8 && crystalDist < 4.6 && (pulse % 4 >= 2);
 
     if (crystalHoldRange) {
       action.forward = false;
@@ -1696,7 +2140,7 @@ function buildMinecraftAction(objective, state = {}, sessionCtx = {}) {
       action.right = false;
       noteParts.push('Totem safety priority active.');
     } else if (hasCrystalKit && s.obsidianSlot >= 0 && s.endCrystalSlot >= 0) {
-      if (pulse % 2 === 0) {
+      if (pulse % 3 === 0) {
         action.hotbarSlot = s.obsidianSlot;
         action.use = true;
         action.forward = false;
@@ -1726,6 +2170,16 @@ function buildMinecraftAction(objective, state = {}, sessionCtx = {}) {
       action.forward = true;
       action.hotbarSlot = s.pearlSlot >= 0 ? s.pearlSlot : s.swordSlot;
       noteParts.push('Crystal kit incomplete: repositioning/looting.');
+    }
+
+    const crystallingNow = action.hotbarSlot === s.obsidianSlot || action.hotbarSlot === s.endCrystalSlot;
+    const safeAnchoringNow = action.hotbarSlot === s.respawnAnchorSlot || action.hotbarSlot === s.glowstoneSlot;
+    if (s.totemSlot >= 0 && s.totemCount >= 2 && !crystallingNow && !safeAnchoringNow) {
+      action.hotbarSlot = s.totemSlot;
+      if (!action.use) {
+        action.attack = false;
+      }
+      noteParts.push('CPvP double totem: spare totem held in hotbar while not crystal/anchor-cycling.');
     }
 
     if (enemyNearby && canUsePearl && s.health <= 3) {
@@ -1833,42 +2287,76 @@ function buildMinecraftAction(objective, state = {}, sessionCtx = {}) {
   }
 
   if (mode === 'build') {
-    const bridging = /\b(bridge|speedbridge|godbridge|rush)\b/.test(text) || wantsTellyBridge || wantsAndromedaBridge;
-    const wantsWoodPrep = /\b(log|logs|wood|plank|planks|collect \d+ logs?)\b/.test(text);
-    const treeInSight = /log|wood|tree|oak|birch|spruce|jungle|acacia|dark_oak|mangrove|cherry/.test(s.focusedEntity || '');
-    action.use = s.hasBlocks;
-    action.hotbarSlot = s.blockSlot;
-    action.sneak = bridging || /\b(edge|safe|careful)\b/.test(text);
-    action.forward = bridging;
-    action.jump = /\b(tower|up|stairs)\b/.test(text) && pulse % 3 === 0;
-    action.pitchDelta = bridging ? 6 : 0;
-    action.yawDelta = bridging ? ((pulse % 2 === 0) ? 2 : -2) : 0;
-    action.durationTicks = bridging ? 5 : 8;
+    const litematicRequested = /\b(litematic|litematica|schematic)\b/.test(text);
+    const materialScanRequested = /\b(material|materials|required|shopping list|requirements)\b/.test(text);
+    if (litematicRequested || materialScanRequested) {
+      noteParts.push('Litematic workflow active: import schematic externally, place file in litematics/schematics folder, scan required materials, then build once stock is complete.');
+      if (!s.hasBlocks || s.hotbarBlocks <= 0) {
+        noteParts.push('Build planner: not enough placement blocks in hotbar; gather required materials first.');
+      }
+    }
 
-    if (wantsTellyBridge && s.hasBlocks) {
+    if (wantsLongWaterTravel) {
+      if (hasBoat) {
+        action.forward = true;
+        action.sprint = false;
+        action.use = true;
+        action.jump = false;
+        action.sneak = false;
+        action.hotbarSlot = s.boatSlot;
+        action.pitchDelta = clamp((-s.pitch) / 2, -8, 8);
+        action.durationTicks = 6;
+        noteParts.push('Water travel: using boat for long-distance crossing.');
+      } else {
+        action.use = false;
+        action.attack = /log|wood|tree|oak|birch|spruce|jungle|acacia|dark_oak|mangrove|cherry/.test(s.focusedEntity || '');
+        action.hotbarSlot = s.axeSlot >= 0 ? s.axeSlot : s.pickaxeSlot;
+        action.forward = !action.attack;
+        action.sprint = !action.attack;
+        action.jump = !action.attack && s.horizontalSpeed < 0.08;
+        action.sneak = false;
+        action.durationTicks = 6;
+        noteParts.push('Water travel prep: gathering wood to craft a boat, then cross water.');
+      }
+    } else {
+      const bridging = /\b(bridge|speedbridge|godbridge|rush)\b/.test(text) || wantsTellyBridge || wantsAndromedaBridge;
+      const wantsWoodPrep = /\b(log|logs|wood|plank|planks|collect \d+ logs?)\b/.test(text);
+      const treeInSight = /log|wood|tree|oak|birch|spruce|jungle|acacia|dark_oak|mangrove|cherry/.test(s.focusedEntity || '');
+      const unsafeEdge = (s.fallDistance > 0.8) || (!s.onGround && s.verticalSpeed < -0.08);
+      const bridgeTargetPitch = wantsAndromedaBridge ? 62 : (wantsTellyBridge ? 64 : 58);
+      action.use = s.hasBlocks;
+      action.hotbarSlot = s.blockSlot;
+      action.sneak = bridging || /\b(edge|safe|careful)\b/.test(text);
+      action.forward = bridging;
+      action.jump = /\b(tower|up|stairs)\b/.test(text) && pulse % 3 === 0;
+      action.pitchDelta = bridging ? clamp((bridgeTargetPitch - s.pitch) / 3, -5, 5) : 0;
+      action.yawDelta = bridging ? ((pulse % 2 === 0) ? 2 : -2) : 0;
+      action.durationTicks = bridging ? 5 : 8;
+
+      if (wantsTellyBridge && s.hasBlocks) {
+        action.forward = true;
+        action.sprint = false;
+        action.use = true;
+        action.jump = s.onGround && (pulse % 4 === 0);
+        action.sneak = true;
+        action.pitchDelta = clamp((64 - s.pitch) / 3, -5, 5);
+        action.yawDelta = (pulse % 2 === 0) ? 3 : -3;
+        action.durationTicks = 4;
+        noteParts.push('Telly bridge routine: sprint-jump placement cadence active.');
+      } else if (wantsAndromedaBridge && s.hasBlocks) {
+      const strafeRight = (pulse % 6) < 3;
       action.forward = true;
-      action.sprint = true;
+      action.sprint = false;
       action.use = true;
-      action.jump = (pulse % 2 === 0);
-      action.sneak = (pulse % 4 === 0);
-      action.pitchDelta = 8;
-      action.yawDelta = (pulse % 2 === 0) ? 3 : -3;
-      action.durationTicks = 3;
-      noteParts.push('Telly bridge routine: sprint-jump placement cadence active.');
-    } else if (wantsAndromedaBridge && s.hasBlocks) {
-      const strafeRight = (pulse % 4) < 2;
-      action.forward = true;
-      action.sprint = true;
-      action.use = true;
-      action.jump = (pulse % 3 !== 1);
-      action.sneak = (pulse % 3 === 0);
+      action.jump = s.onGround && (pulse % 5 === 0);
+      action.sneak = true;
       action.left = !strafeRight;
       action.right = strafeRight;
-      action.pitchDelta = 7;
-      action.yawDelta = strafeRight ? 3 : -3;
-      action.durationTicks = 4;
-      noteParts.push('Andromeda bridge routine: diagonal strafe-place rhythm active.');
-    } else if (bridging && !s.hasBlocks && wantsWoodPrep) {
+      action.pitchDelta = clamp((62 - s.pitch) / 3, -5, 5);
+      action.yawDelta = strafeRight ? 2 : -2;
+      action.durationTicks = 5;
+        noteParts.push('Andromeda bridge routine: controlled diagonal place rhythm active.');
+      } else if (bridging && !s.hasBlocks && wantsWoodPrep) {
       action.use = false;
       action.attack = treeInSight;
       action.hotbarSlot = s.axeSlot >= 0 ? s.axeSlot : s.pickaxeSlot;
@@ -1878,11 +2366,26 @@ function buildMinecraftAction(objective, state = {}, sessionCtx = {}) {
       action.sneak = false;
       action.yawDelta = treeInSight ? 0 : ((pulse % 2 === 0) ? 6 : -6);
       action.durationTicks = 6;
-      noteParts.push('Bridge prep: collecting wood/logs first, then crafting planks for bridging blocks.');
-    } else {
-      noteParts.push(s.hasBlocks
-        ? `Build mode: controlled placement and bridge safety (${s.hotbarBlocks} blocks hotbar).`
-        : 'Build mode: no blocks detected, moving to gather resources.');
+        noteParts.push('Bridge prep: collecting wood/logs first, then crafting planks for bridging blocks.');
+      } else {
+        noteParts.push(s.hasBlocks
+          ? `Build mode: controlled placement and bridge safety (${s.hotbarBlocks} blocks hotbar).`
+          : 'Build mode: no blocks detected, moving to gather resources.');
+      }
+
+      if (bridging && unsafeEdge) {
+        action.forward = false;
+        action.back = true;
+        action.sprint = false;
+        action.jump = false;
+        action.left = false;
+        action.right = false;
+        action.sneak = true;
+        action.use = s.hasBlocks;
+        action.pitchDelta = clamp((70 - s.pitch) / 2, -6, 6);
+        action.durationTicks = 4;
+        noteParts.push('Bridge safety hold: edge/fall risk detected, backing and stabilizing.');
+      }
     }
   }
 
@@ -1959,19 +2462,60 @@ function buildMinecraftAction(objective, state = {}, sessionCtx = {}) {
   }
 
   if (mode === 'general') {
-    action.forward = true;
-    action.sprint = /\b(run|sprint|fast)\b/.test(text) && !lowHp;
-    action.attack = /\b(mine|dig|break|chop|harvest)\b/.test(text);
-    action.use = /\b(place|build|use|block)\b/.test(text);
-    action.hotbarSlot = action.use ? s.blockSlot : (action.attack ? (s.pickaxeSlot >= 0 ? s.pickaxeSlot : s.axeSlot) : -1);
-    action.durationTicks = 8;
-    const wantsExploration = /\b(explore|search|walk around|cave|look around|patrol)\b/.test(text);
-    const likelyStuck = s.onGround && s.horizontalSpeed < 0.025 && !edgeRisk;
-    if (wantsExploration && likelyStuck && pulse % 8 === 0) {
-      action.yawDelta = (pulse % 16 === 0) ? 10 : -10;
-      action.jump = true;
+    if (isGeneral1Preset) {
+      const treeInSight = /log|wood|tree|oak|birch|spruce|jungle|acacia|dark_oak|mangrove|cherry/.test(s.focusedEntity || '');
+      const closeHarvestable = s.focusedDistance > 0 && s.focusedDistance <= 4.2;
+      const likelyStuck = s.onGround && s.horizontalSpeed < 0.025 && !edgeRisk;
+      const obstacleAhead = s.focusedDistance > 0
+        && s.focusedDistance < 1.8
+        && !/log|wood|tree|oak|birch|spruce|jungle|acacia|dark_oak|mangrove|cherry/.test(s.focusedEntity || '')
+        && !/player|zombie|skeleton|creeper|spider|enderman|villager|golem|slime|witch|phantom|blaze|piglin|hoglin|ravager|warden/.test(s.focusedEntity || '');
+      const curveLeft = (Math.floor(pulse / 6) % 2) === 0;
+      action.use = false;
+      action.attack = treeInSight || closeHarvestable;
+      action.hotbarSlot = s.axeSlot >= 0 ? s.axeSlot : (s.swordSlot >= 0 ? s.swordSlot : s.pickaxeSlot);
+      action.forward = !treeInSight;
+      action.sprint = !treeInSight && !lowHp;
+      action.jump = !treeInSight && (s.horizontalSpeed < 0.06 || likelyStuck || obstacleAhead);
+      action.sneak = false;
+      action.durationTicks = 6;
+      action.yawDelta = treeInSight ? 0 : (curveLeft ? 2 : -2);
+      action.moveAngle = treeInSight ? 0 : (curveLeft ? -10 : 10);
+      action.left = false;
+      action.right = false;
+
+      if (!treeInSight && obstacleAhead) {
+        action.left = curveLeft;
+        action.right = !curveLeft;
+        action.moveAngle = curveLeft ? -30 : 30;
+        action.yawDelta = curveLeft ? 6 : -6;
+      }
+
+      if (!treeInSight && likelyStuck && pulse % 8 === 0) {
+        action.yawDelta = (pulse % 16 === 0) ? 16 : -16;
+        action.left = (pulse % 16 === 0);
+        action.right = !action.left;
+        action.moveAngle = action.left ? -35 : 35;
+      }
+      if (s.pitch > 28) {
+        action.pitchDelta = clamp((10 - s.pitch) / 2, -8, 8);
+      }
+      noteParts.push('General1 routine: obstacle-aware tree routing with curved movement and active close-range harvesting.');
+    } else {
+      action.forward = true;
+      action.sprint = /\b(run|sprint|fast)\b/.test(text) && !lowHp;
+      action.attack = /\b(mine|dig|break|chop|harvest)\b/.test(text);
+      action.use = /\b(place|build|use|block)\b/.test(text);
+      action.hotbarSlot = action.use ? s.blockSlot : (action.attack ? (s.pickaxeSlot >= 0 ? s.pickaxeSlot : s.axeSlot) : -1);
+      action.durationTicks = 8;
+      const wantsExploration = /\b(explore|search|walk around|cave|look around|patrol)\b/.test(text);
+      const likelyStuck = s.onGround && s.horizontalSpeed < 0.025 && !edgeRisk;
+      if (wantsExploration && likelyStuck && pulse % 8 === 0) {
+        action.yawDelta = (pulse % 16 === 0) ? 10 : -10;
+        action.jump = true;
+      }
+      noteParts.push('General mode: exploring objective path.');
     }
-    noteParts.push('General mode: exploring objective path.');
   }
 
   if (mode === 'resource') {
@@ -1999,7 +2543,21 @@ function buildMinecraftAction(objective, state = {}, sessionCtx = {}) {
       || (wantsGold && s.goldCount >= goldTarget)
       || (wantsEmerald && s.emeraldCount >= emeraldTarget);
 
-    if (enemyNearby || lowHp || inventoryValue >= 24) {
+    const resourceKeywordRequested = wantsIron || wantsRedstone || wantsDiamond || wantsGold || wantsEmerald;
+    const focusedEntity = (s.focusedEntity || '').toLowerCase();
+    const oreInSight = /iron|deepslate_iron|redstone|deepslate_redstone|diamond|deepslate_diamond|gold|deepslate_gold|emerald|deepslate_emerald/.test(focusedEntity);
+    const treeInSight = /log|wood|tree|oak|birch|spruce|jungle|acacia|dark_oak|mangrove|cherry/.test(focusedEntity);
+    const closeHarvestable = s.focusedDistance > 0 && s.focusedDistance <= 4.4;
+    const requestedToolSlot = (wantsRedstone || wantsDiamond || wantsIron || wantsGold || wantsEmerald)
+      ? s.pickaxeSlot
+      : (wantsGold ? s.pickaxeSlot : s.axeSlot);
+    const harvestingToolSlot = requestedToolSlot >= 0
+      ? requestedToolSlot
+      : (treeInSight ? s.axeSlot : (s.pickaxeSlot >= 0 ? s.pickaxeSlot : s.axeSlot));
+    const shouldFightNearbyEnemy = enemyWithinResourceAggro && !veryLowHp && s.hasMeleeWeapon;
+    const shouldFallbackDefensive = (enemyVeryClose && (veryLowHp || !s.hasMeleeWeapon)) || (veryLowHp && enemyNearby);
+
+    if (shouldFallbackDefensive) {
       action.back = true;
       action.forward = false;
       action.sneak = true;
@@ -2009,7 +2567,19 @@ function buildMinecraftAction(objective, state = {}, sessionCtx = {}) {
       if (s.utilityFoodSlot >= 0 && lowHp) {
         action.use = true;
       }
-      noteParts.push('Resource safety protocol: retreating with loot to avoid death.');
+      noteParts.push('Resource safety protocol: critical HP or no weapon with close enemy, temporarily disengaging.');
+    } else if (shouldFightNearbyEnemy) {
+      action.attack = true;
+      action.use = false;
+      action.forward = enemyVeryClose ? false : true;
+      action.back = enemyVeryClose;
+      action.left = (pulse % 2) === 0;
+      action.right = !action.left;
+      action.sprint = !lowHp && !enemyVeryClose;
+      action.jump = enemyVeryClose && (pulse % 5 === 0);
+      action.durationTicks = 5;
+      action.hotbarSlot = s.swordSlot >= 0 ? s.swordSlot : s.axeSlot;
+      noteParts.push('Resource route defense: clearing nearby enemy, then resuming mining.');
     } else if (targetReached) {
       action.back = false;
       action.forward = false;
@@ -2020,12 +2590,15 @@ function buildMinecraftAction(objective, state = {}, sessionCtx = {}) {
       noteParts.push('Resource target reached. Holding position and awaiting next objective.');
     } else {
       const stuckMining = s.onGround && s.horizontalSpeed < 0.025 && !edgeRisk;
-      action.forward = true;
-      action.sprint = true;
-      action.jump = s.horizontalSpeed < 0.05;
+      const doingHarvest = (oreInSight || treeInSight || closeHarvestable) && harvestingToolSlot >= 0;
+      action.attack = doingHarvest;
+      action.use = false;
+      action.forward = !doingHarvest;
+      action.sprint = !doingHarvest && !lowHp;
+      action.jump = !doingHarvest && s.horizontalSpeed < 0.05;
       action.sneak = edgeRisk || (s.fallDistance > 0.5);
-      action.durationTicks = 7;
-      action.hotbarSlot = wantsRedstone || wantsDiamond ? s.pickaxeSlot : s.blockSlot;
+      action.durationTicks = doingHarvest ? 5 : 7;
+      action.hotbarSlot = harvestingToolSlot >= 0 ? harvestingToolSlot : (s.blockSlot >= 0 ? s.blockSlot : s.pickaxeSlot);
       action.yawDelta = 0;
       if (stuckMining && pulse % 8 === 0) {
         action.yawDelta = (pulse % 16 === 0) ? 12 : -12;
@@ -2033,7 +2606,18 @@ function buildMinecraftAction(objective, state = {}, sessionCtx = {}) {
         action.right = !action.left;
         action.jump = true;
       }
-      noteParts.push('Resource route: cautious collection with survival priority.');
+
+      if (!resourceKeywordRequested) {
+        noteParts.push('Resource route: default mining priority active (iron/redstone first, then diamond/gold/emerald).');
+      } else {
+        noteParts.push(doingHarvest
+          ? 'Resource route: ore/tree in sight, harvesting immediately with optimal tool.'
+          : 'Resource route: sprinting to next vein and scanning for target blocks.');
+      }
+
+      if (inventoryValue >= 24 && !enemyNearby) {
+        noteParts.push('Loot value is high: stay efficient and avoid unnecessary detours until requested target count is met.');
+      }
     }
   }
 
@@ -2077,7 +2661,7 @@ function buildMinecraftAction(objective, state = {}, sessionCtx = {}) {
 
   if (lowHp) {
     action.sprint = false;
-    if (mode !== 'build' && mode !== 'clutch') {
+    if (mode !== 'build' && mode !== 'clutch' && mode !== 'pvp' && mode !== 'crystal') {
       action.back = true;
       action.forward = false;
     }
@@ -2099,8 +2683,28 @@ function buildMinecraftAction(objective, state = {}, sessionCtx = {}) {
     noteParts.push('No melee weapon + close enemy: forced kite behavior.');
   }
 
+  if (shouldForceValuableLoot && !severeDanger) {
+    action.attack = false;
+    action.use = false;
+    action.forward = true;
+    action.back = false;
+    action.left = false;
+    action.right = false;
+    action.sprint = !enemyVeryClose;
+    action.jump = s.horizontalSpeed < 0.05;
+    action.sneak = false;
+    action.yawDelta = lootYaw;
+    action.durationTicks = 6;
+    if (s.utilityFoodSlot >= 0 && s.health <= 7) {
+      action.hotbarSlot = s.utilityFoodSlot;
+    }
+    noteParts.push('Valuable dropped item detected: temporarily rerouting to loot, then resuming task.');
+  }
+
   if (action.attack && action.hotbarSlot < 0) {
-    action.hotbarSlot = s.swordSlot >= 0 ? s.swordSlot : s.axeSlot;
+    action.hotbarSlot = hasMace
+      ? (hasBreachMace && enemyHasShield ? s.breachMaceSlot : s.maceSlot)
+      : (s.swordSlot >= 0 ? s.swordSlot : s.axeSlot);
   }
 
   if (action.use && action.hotbarSlot < 0) {
@@ -2112,21 +2716,79 @@ function buildMinecraftAction(objective, state = {}, sessionCtx = {}) {
     action.attack = true;
   }
 
+  const hasAnyCombatTarget = (s.nearestEnemyDistance > 0 && s.nearestEnemyDistance < 30)
+    || (s.nearestHostileDistance > 0 && s.nearestHostileDistance < 20)
+    || hasEnemyInCrosshair;
+  const combatIntent = mode === 'pvp'
+    || mode === 'crystal'
+    || /\b(pvp|fight|combat|attack|kill|defeat|slay|duel|hunt|rush|eliminate)\b/.test(text);
+  const activeEnemyDist = (s.nearestEnemyDistance > 0 ? s.nearestEnemyDistance : s.nearestHostileDistance);
+  const inMeleeRange = activeEnemyDist > 0 && activeEnemyDist <= 4.2;
+  const inBowRange = activeEnemyDist > 6.0;
+  if (hasAnyCombatTarget && combatIntent && !action.sneak) {
+    if (inMeleeRange && hasMace && hasWindCharge && s.onGround && (pulse % 14 === 3)) {
+      action.use = true;
+      action.attack = false;
+      action.jump = true;
+      action.hotbarSlot = s.windChargeSlot;
+      action.pitchDelta = clamp((82 - s.pitch) / 2, -10, 10);
+      action.durationTicks = 4;
+      noteParts.push('Combat optimizer: using windcharge for mace slam setup.');
+    } else if (enemyHasShield && s.axeSlot >= 0 && inMeleeRange) {
+      action.hotbarSlot = s.axeSlot;
+      if (action.attack) {
+        noteParts.push('Combat optimizer: axe selected to counter shield.');
+      }
+    } else if (inMeleeRange && hasMace) {
+      action.hotbarSlot = hasBreachMace && enemyHasShield ? s.breachMaceSlot : s.maceSlot;
+      if (action.attack) {
+        noteParts.push('Combat optimizer: mace selected for melee burst.');
+      }
+    } else if (inBowRange && hasRangedBow && !action.use) {
+      action.hotbarSlot = s.bowSlot;
+      if (!action.attack) {
+        action.use = true;
+        action.durationTicks = Math.max(action.durationTicks, 6);
+      }
+      noteParts.push('Combat optimizer: bow selected for ranged pressure.');
+    } else if (hasCrystalCombatKit && mode !== 'build' && mode !== 'general' && activeEnemyDist > 2.4 && activeEnemyDist < 5.2) {
+      action.hotbarSlot = (pulse % 2 === 0) ? s.obsidianSlot : s.endCrystalSlot;
+      action.use = true;
+      action.attack = pulse % 2 !== 0;
+      action.sprint = false;
+      action.forward = false;
+      action.back = false;
+      action.durationTicks = 4;
+      noteParts.push('Combat optimizer: crystal cycle selected for mid-range fight.');
+    } else if (action.attack && action.hotbarSlot < 0) {
+      action.hotbarSlot = hasMace
+        ? (hasBreachMace && enemyHasShield ? s.breachMaceSlot : s.maceSlot)
+        : (s.swordSlot >= 0 ? s.swordSlot : s.axeSlot);
+    }
+  }
+
   // ── Auto-eat: eat best food when HP is low ─────────────────────────────────
-  const canEat = s.utilityFoodSlot >= 0 && s.food < 19;
-  const criticalEat = canEat && s.health <= 6;
-  const normalEat = canEat && s.health <= 12 && !enemyVeryClose &&
-    (mode !== 'pvp' || (s.nearestEnemyDistance < 0 && s.nearestHostileDistance > 3));
-  if (criticalEat || normalEat) {
+  const canEat = s.utilityFoodSlot >= 0;
+  const criticalEat = canEat && s.health <= eatCriticalHpThreshold; // learned threshold, defaults to 5 hearts
+  const sustainEat = canEat && s.health <= eatRecoverHpThreshold && s.food < 20;
+  const shouldHoldEatLock = lowHpEatLockActive && s.health <= eatRecoverHpThreshold;
+  if (criticalEat || sustainEat || shouldHoldEatLock) {
     action.use = true;
     action.attack = false;
     action.hotbarSlot = s.utilityFoodSlot;
     action.forward = false;
-    action.back = !enemyVeryClose;
+    action.back = false;
     action.sprint = false;
-    action.sneak = enemyNearby && !criticalEat;
-    action.durationTicks = 6;
-    noteParts.push(`Auto-eat: restoring HP (hp=${s.health.toFixed(1)}, food=${s.food}).`);
+    action.sneak = enemyNearby;
+    action.left = false;
+    action.right = false;
+    action.jump = false;
+    action.durationTicks = (criticalEat || shouldHoldEatLock) ? Math.max(10, eatLockTicks + 1) : 8;
+    noteParts.push(criticalEat
+      ? `Auto-eat critical: HP=${s.health.toFixed(1)} (threshold=${eatCriticalHpThreshold.toFixed(1)}), hard-prioritizing food over combat.`
+      : shouldHoldEatLock
+        ? `Auto-eat lock: keeping food out until stabilized (hp=${s.health.toFixed(1)}).`
+        : `Auto-eat sustain: topping up while recovering (hp=${s.health.toFixed(1)}, food=${s.food}).`);
   }
 
   if (!Object.values(action).some(v => v === true)) {
@@ -2329,7 +2991,12 @@ async function generateChatReply(sessionId, userMessage, baseUrl = '') {
     };
   }
 
-  const scratchResult = scratchCodingReply(userMessage);
+  const lowerUserMessage = normalizeText(userMessage).toLowerCase();
+  const looksMinecraftContext = /\b(minecraft|bedwars|pvp|bridge|bridging|andromeda|telly|godbridge|totem|ender ?pearl|pearl|elytra|obsidian|crystal|hotbar|litematic|litematica|schematic|survival|nether|end|stronghold|farm|redstone)\b/.test(lowerUserMessage);
+  const looksScratchContext = /\b(scratch|turbowarp|sprite|broadcast|clone|green flag|stage)\b/.test(lowerUserMessage);
+  const allowScratchHelper = looksScratchContext && !looksMinecraftContext;
+
+  const scratchResult = allowScratchHelper ? scratchCodingReply(userMessage) : null;
   if (scratchResult) {
     const summary = buildReasoningSummary({
       userMessage,
@@ -2831,15 +3498,101 @@ app.post(['/mc-agent', '/mc'], checkApiKey, checkRateLimit, (req, res) => {
     }
 
     const existingCtx = mcAgentSessions.get(sessionId) || { tickCounter: 0 };
+    const nextTickCounter = Number(existingCtx.tickCounter || 0) + 1;
+    const learningProfile = sanitizeMcLearningProfile(existingCtx.learning);
+    const learnedCriticalHp = learningProfile.eatCriticalHp;
+    const learnedRecoverHp = Math.max(learnedCriticalHp + 1, learningProfile.eatRecoverHp);
+    const stateHealth = Number(state?.health);
+    const hasStateHealth = Number.isFinite(stateHealth) && stateHealth >= 0;
+    const previousHealth = Number(existingCtx.lastHealth);
+    const tookDamageNow = hasStateHealth
+      && Number.isFinite(previousHealth)
+      && previousHealth > 0
+      && (previousHealth - stateHealth) >= 0.5;
+    const previousDamageTick = Number(existingCtx.lastDamageTick || -1);
+    const nextDamageTick = tookDamageNow ? nextTickCounter : previousDamageTick;
+    const stateFood = Number(state?.food);
+    const hasStateFood = Number.isFinite(stateFood) && stateFood >= 0;
+    const utilityFoodSlotNow = Number(state?.utilityFoodSlot);
+    const hasUtilityFood = Number.isFinite(utilityFoodSlotNow) && utilityFoodSlotNow >= 0;
+    const previousLowHpEatUntilTick = Number(existingCtx.lowHpEatUntilTick || -1);
+    const enterLowHpEatLock = hasStateHealth && hasUtilityFood && stateHealth <= learnedCriticalHp;
+    const keepLowHpEatLock = hasStateHealth && hasUtilityFood && stateHealth <= learnedRecoverHp && (!hasStateFood || stateFood < 20);
+    const clearLowHpEatLock = !hasUtilityFood || (hasStateHealth && stateHealth >= 13 && (!hasStateFood || stateFood >= 18));
+    let nextLowHpEatUntilTick = previousLowHpEatUntilTick;
+    if (enterLowHpEatLock) {
+      nextLowHpEatUntilTick = nextTickCounter + Math.max(6, learningProfile.eatLockTicks + 2);
+    } else if (keepLowHpEatLock) {
+      nextLowHpEatUntilTick = Math.max(previousLowHpEatUntilTick, nextTickCounter + Math.max(6, learningProfile.eatLockTicks));
+    } else if (clearLowHpEatLock) {
+      nextLowHpEatUntilTick = -1;
+    }
+    const objectiveText = normalizeText(objective).toLowerCase();
+    const bedObjectiveActive = /\b(break|destroy|take\s*out|rush)\b[^.\n]*\bbed\b|\bbed\b[^.\n]*\b(break|destroy)\b/.test(objectiveText)
+      || /\b(bedwars|rush bed|defend bed)\b/.test(objectiveText);
+    const currentBedDistance = Number(state?.nearestBedDistance);
+    const bedVisibleNow = Boolean(state?.bedNearby)
+      || (Number.isFinite(currentBedDistance) && currentBedDistance >= 0 && currentBedDistance < 14);
+    const existingBedGoal = existingCtx.bedGoal && typeof existingCtx.bedGoal === 'object' ? existingCtx.bedGoal : {};
+    const closestObservedDistance = Number(existingBedGoal.closestDistance);
+    const nextClosestObservedDistance = Number.isFinite(currentBedDistance) && currentBedDistance >= 0
+      ? (Number.isFinite(closestObservedDistance) ? Math.min(closestObservedDistance, currentBedDistance) : currentBedDistance)
+      : closestObservedDistance;
+    const seenBedEver = Boolean(existingBedGoal.seenBedEver) || bedVisibleNow;
+    const reachedBedArea = Number.isFinite(nextClosestObservedDistance) && nextClosestObservedDistance <= 4.5;
+    const newlyCompletedBedGoal = bedObjectiveActive
+      && !bedVisibleNow
+      && seenBedEver
+      && reachedBedArea;
     const opponentName = normalizeText(state?.nearestEnemyName || 'unknown');
     const existingOpponents = existingCtx.opponents && typeof existingCtx.opponents === 'object'
       ? existingCtx.opponents
       : {};
     const existingOpponent = existingOpponents[opponentName] || { seen: 0 };
+    const nearestEnemyDistance = Number(state?.nearestEnemyDistance);
+    const nearestEnemyHealth = Number(state?.nearestEnemyHealth);
+    const nearestEnemyArmorPieces = Number(state?.nearestEnemyArmorPieces || 0);
+    const playerHasMeleeWeapon = Boolean(state?.hasMeleeWeapon);
+    const playerHealthNow = hasStateHealth ? stateHealth : Number(existingCtx.lastHealth || 0);
+    const enemyIsTrackable = opponentName !== 'unknown' && Number.isFinite(nearestEnemyDistance) && nearestEnemyDistance > 0 && nearestEnemyDistance < 20;
+    const enemyHealthKnown = Number.isFinite(nearestEnemyHealth) && nearestEnemyHealth > 0;
+    const estimatedEnemyHealth = enemyHealthKnown ? nearestEnemyHealth : 12;
+    const hpAdvantage = playerHealthNow - estimatedEnemyHealth;
+    const armorDisadvantage = nearestEnemyArmorPieces >= 4 && playerHealthNow < 10;
+    const canLikelyWinFight = playerHasMeleeWeapon
+      && playerHealthNow >= 6
+      && !armorDisadvantage
+      && (hpAdvantage >= -2 || playerHealthNow >= 14);
+
+    const previousRetaliationTargetName = normalizeText(existingCtx.retaliationTargetName || '');
+    const previousRetaliationUntilTick = Number(existingCtx.retaliationUntilTick || -1);
+    const retaliationTargetStillVisible = previousRetaliationTargetName.length > 0
+      && opponentName.toLowerCase() === previousRetaliationTargetName.toLowerCase()
+      && enemyIsTrackable
+      && (!enemyHealthKnown || nearestEnemyHealth > 0);
+    let nextRetaliationTargetName = previousRetaliationTargetName;
+    let nextRetaliationUntilTick = previousRetaliationUntilTick;
+
+    if (tookDamageNow && enemyIsTrackable && canLikelyWinFight) {
+      nextRetaliationTargetName = opponentName;
+      nextRetaliationUntilTick = nextTickCounter + 140;
+    } else if (retaliationTargetStillVisible && canLikelyWinFight) {
+      nextRetaliationUntilTick = Math.max(previousRetaliationUntilTick, nextTickCounter + 40);
+    } else if (nextTickCounter > previousRetaliationUntilTick || (enemyHealthKnown && nearestEnemyHealth <= 0)) {
+      nextRetaliationTargetName = '';
+      nextRetaliationUntilTick = -1;
+    }
 
     const nextCtx = {
-      tickCounter: Number(existingCtx.tickCounter || 0) + 1,
+      tickCounter: nextTickCounter,
       updatedAt: Date.now(),
+      learning: learningProfile,
+      lastHealth: hasStateHealth ? stateHealth : Number(existingCtx.lastHealth || -1),
+      lastDamageTick: Number.isFinite(nextDamageTick) ? nextDamageTick : -1,
+      retaliationTargetName: nextRetaliationTargetName,
+      retaliationUntilTick: Number.isFinite(nextRetaliationUntilTick) ? nextRetaliationUntilTick : -1,
+      lowHpEatUntilTick: Number.isFinite(nextLowHpEatUntilTick) ? nextLowHpEatUntilTick : -1,
+      lastPotTick: Number(existingCtx.lastPotTick || -9999),
       goals: {
         prot4Diamond: /\b(protection ?4|prot ?4|full diamond|diamond armor)\b/.test(objective),
         netherite: /\b(netherite|netherite upgrade|smithing template)\b/.test(objective),
@@ -2854,11 +3607,87 @@ app.post(['/mc-agent', '/mc'], checkApiKey, checkRateLimit, (req, res) => {
           lastMainItem: normalizeText(state?.nearestEnemyMainItem || ''),
           updatedAt: Date.now()
         }
-      }
+      },
+      bedGoal: {
+        active: bedObjectiveActive,
+        completed: bedObjectiveActive && (Boolean(existingBedGoal.completed) || newlyCompletedBedGoal),
+        seenBedEver: bedObjectiveActive ? seenBedEver : false,
+        closestDistance: bedObjectiveActive && Number.isFinite(nextClosestObservedDistance) ? nextClosestObservedDistance : -1,
+        visibleNow: bedObjectiveActive ? bedVisibleNow : false
+      },
+      windMaceComboStage: Number(existingCtx.windMaceComboStage || 0)
     };
     const decision = buildMinecraftAction(objective, state, nextCtx);
+    const previousHotbarSlot = Number(existingCtx.lastHotbarSlot);
+    const previousHotbarChangeTick = Number(existingCtx.lastHotbarChangeTick || -9999);
+    const desiredHotbarSlot = Number(decision?.action?.hotbarSlot);
+    const swordSlotNow = Number(state?.swordSlot);
+    const potionSlotNow = Number(state?.combatPotionSlot);
+    const hasPreviousHotbar = Number.isFinite(previousHotbarSlot) && previousHotbarSlot >= 0;
+    const hasDesiredHotbar = Number.isFinite(desiredHotbarSlot) && desiredHotbarSlot >= 0;
+    const hotbarChangedNow = hasPreviousHotbar && hasDesiredHotbar && desiredHotbarSlot !== previousHotbarSlot;
+    const ticksSinceHotbarChange = nextTickCounter - previousHotbarChangeTick;
+    const swordPotionPairSwap = Number.isFinite(swordSlotNow)
+      && Number.isFinite(potionSlotNow)
+      && swordSlotNow >= 0
+      && potionSlotNow >= 0
+      && ((previousHotbarSlot === swordSlotNow && desiredHotbarSlot === potionSlotNow)
+        || (previousHotbarSlot === potionSlotNow && desiredHotbarSlot === swordSlotNow));
+    const hotbarLowIntentSwap = hotbarChangedNow
+      && ticksSinceHotbarChange < 5
+      && !Boolean(decision?.action?.use)
+      && !Boolean(decision?.action?.attack);
+    const avoidPotionSwapWithoutUse = swordPotionPairSwap
+      && decision.mode === 'pvp'
+      && !Boolean(decision?.action?.use);
+
+    if ((hotbarLowIntentSwap || avoidPotionSwapWithoutUse) && hasPreviousHotbar) {
+      decision.action.hotbarSlot = previousHotbarSlot;
+    }
+
+    const finalHotbarSlot = Number(decision?.action?.hotbarSlot);
+    const hasFinalHotbar = Number.isFinite(finalHotbarSlot) && finalHotbarSlot >= 0;
+    const didHotbarChange = hasFinalHotbar && hasPreviousHotbar
+      ? finalHotbarSlot !== previousHotbarSlot
+      : hasFinalHotbar;
+    const combatPotionSlot = Number(state?.combatPotionSlot);
+    const usedCombatPotion = Boolean(decision?.action?.use)
+      && Number.isFinite(combatPotionSlot)
+      && Number(decision?.action?.hotbarSlot) === combatPotionSlot;
+    const usedFoodNow = Boolean(decision?.action?.use)
+      && Number.isFinite(utilityFoodSlotNow)
+      && utilityFoodSlotNow >= 0
+      && Number(decision?.action?.hotbarSlot) === utilityFoodSlotNow;
+    const persistedLowHpEatUntilTick = usedFoodNow && hasStateHealth && stateHealth <= learnedRecoverHp
+      ? Math.max(Number(nextCtx.lowHpEatUntilTick || -1), nextCtx.tickCounter + Math.max(6, learningProfile.eatLockTicks))
+      : Number(nextCtx.lowHpEatUntilTick || -1);
+    const windChargeSlotNow = Number(state?.windChargeSlot);
+    const maceSlotNow = Number(state?.maceSlot);
+    const usedWindChargeNow = Boolean(decision?.action?.use)
+      && Number.isFinite(windChargeSlotNow)
+      && windChargeSlotNow >= 0
+      && Number(decision?.action?.hotbarSlot) === windChargeSlotNow;
+    const holdingMaceNow = Number.isFinite(maceSlotNow)
+      && maceSlotNow >= 0
+      && Number(decision?.action?.hotbarSlot) === maceSlotNow;
+    const previousWindMaceStage = Number(existingCtx.windMaceComboStage || 0);
+    let nextWindMaceStage = 0;
+    if (usedWindChargeNow) {
+      nextWindMaceStage = 1;
+    } else if (previousWindMaceStage === 1 && holdingMaceNow && !Boolean(decision?.action?.attack)) {
+      nextWindMaceStage = 2;
+    } else if (previousWindMaceStage === 2 && holdingMaceNow && Boolean(decision?.action?.attack)) {
+      nextWindMaceStage = 0;
+    } else if (previousWindMaceStage > 0 && !holdingMaceNow) {
+      nextWindMaceStage = 0;
+    }
     mcAgentSessions.set(sessionId, {
       ...nextCtx,
+      lastPotTick: usedCombatPotion ? nextCtx.tickCounter : nextCtx.lastPotTick,
+      lowHpEatUntilTick: Number.isFinite(persistedLowHpEatUntilTick) ? persistedLowHpEatUntilTick : -1,
+      windMaceComboStage: nextWindMaceStage,
+      lastHotbarSlot: hasFinalHotbar ? finalHotbarSlot : (hasPreviousHotbar ? previousHotbarSlot : -1),
+      lastHotbarChangeTick: didHotbarChange ? nextCtx.tickCounter : previousHotbarChangeTick,
       mode: decision.mode,
       objective: objective.slice(0, 120),
       lastAction: decision.action
@@ -2883,8 +3712,10 @@ app.post(['/mc-agent', '/mc'], checkApiKey, checkRateLimit, (req, res) => {
       mode: decision.mode,
       memory: {
         tickCounter: nextCtx.tickCounter,
+        learning: nextCtx.learning,
         goals: nextCtx.goals,
-        opponent: nextCtx.opponents[opponentName]
+        opponent: nextCtx.opponents[opponentName],
+        bedGoal: nextCtx.bedGoal
       }
     });
   } catch (error) {
@@ -2952,6 +3783,61 @@ app.post('/feedback', checkApiKey, checkRateLimit, async (req, res) => {
     });
 
     return res.json({ ok: true, sessionId, rating });
+  } catch (error) {
+    return res.status(500).json({
+      ok: false,
+      error: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
+app.post('/mc-feedback', checkApiKey, checkRateLimit, (req, res) => {
+  try {
+    const sessionId = normalizeText(req.body?.sessionId || 'default');
+    const sessionError = validateSessionId(sessionId);
+    if (sessionError) {
+      return res.status(400).json({ ok: false, error: sessionError });
+    }
+
+    const ratingRaw = normalizeText(req.body?.rating || '').toLowerCase();
+    const adjustments = req.body?.adjustments && typeof req.body.adjustments === 'object' ? req.body.adjustments : {};
+    const existingCtx = mcAgentSessions.get(sessionId) || { tickCounter: 0 };
+    const currentProfile = sanitizeMcLearningProfile(existingCtx.learning);
+
+    let nextProfile = {
+      ...currentProfile,
+      updatedAt: Date.now()
+    };
+
+    const applyDelta = (key, delta, min, max) => {
+      const numericDelta = Number(delta);
+      if (!Number.isFinite(numericDelta) || numericDelta === 0) return;
+      nextProfile[key] = clamp(Number(nextProfile[key]) + numericDelta, min, max);
+    };
+
+    applyDelta('eatCriticalHp', adjustments.eatCriticalHpDelta, 7, 14);
+    applyDelta('eatRecoverHp', adjustments.eatRecoverHpDelta, 9, 16);
+    applyDelta('eatLockTicks', adjustments.eatLockTicksDelta, 6, 30);
+    applyDelta('resourceAggressionRadius', adjustments.resourceAggressionRadiusDelta, 4, 14);
+
+    if (ratingRaw === 'bad' || ratingRaw === 'poor') {
+      nextProfile.eatCriticalHp = clamp(Math.max(nextProfile.eatCriticalHp, 10.5), 7, 14);
+      nextProfile.eatRecoverHp = clamp(Math.max(nextProfile.eatRecoverHp, nextProfile.eatCriticalHp + 1.5), 9, 16);
+      nextProfile.eatLockTicks = clamp(Math.max(nextProfile.eatLockTicks, 12), 6, 30);
+    } else if (ratingRaw === 'good' || ratingRaw === 'great') {
+      nextProfile.eatLockTicks = clamp(nextProfile.eatLockTicks - 0.5, 6, 30);
+    }
+
+    nextProfile = sanitizeMcLearningProfile(nextProfile);
+
+    mcAgentSessions.set(sessionId, {
+      ...existingCtx,
+      updatedAt: Date.now(),
+      learning: nextProfile
+    });
+    scheduleMcMemorySave();
+
+    return res.json({ ok: true, sessionId, learning: nextProfile });
   } catch (error) {
     return res.status(500).json({
       ok: false,

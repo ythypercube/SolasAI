@@ -5,7 +5,7 @@ services:
     rootDir: .
     plan: free
     buildCommand: npm install
-    startCommand: node server.js
+    startCommand: npm run start:render
     healthCheckPath: /health
     autoDeploy: true
     envVars:
