@@ -5,207 +5,47 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-const app = express();
-
-const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || '*')
-  .split(',')
-  .map((value) => value.trim())
-  .filter(Boolean);
-
-app.set('trust proxy', 1);
-
-app.use(cors({
-  origin(origin, callback) {
-    if (!origin || ALLOWED_ORIGINS.includes('*') || ALLOWED_ORIGINS.includes(origin)) {
-      return callback(null, true);
-    }
-    return callback(new Error('CORS blocked'));
-  }
-}));
-app.use(express.json({ limit: '1mb' }));
-
-const PORT = Number(process.env.PORT || 8787);
-const PROVIDER = (process.env.PROVIDER || 'solasgpt').toLowerCase();
-const OPENAI_BASE_URL = process.env.OPENAI_BASE_URL || 'https://api.openai.com/v1';
-const OPENAI_API_KEY = process.env.OPENAI_API_KEY || '';
-const OLLAMA_BASE_URL = process.env.OLLAMA_BASE_URL || 'http://127.0.0.1:11434';
-const SOLASGPT_URL = process.env.SOLASGPT_URL || 'http://127.0.0.1:8788';
-const MODEL = process.env.MODEL || (PROVIDER === 'ollama' ? 'llama3.1:8b' : PROVIDER === 'solasgpt' ? 'solasgpt' : 'gpt-4o-mini');
-const DEFAULT_SYSTEM_PROMPT = [
-  'You are SolasGPT, a Minecraft gameplay AI assistant.',
-  'Always give DIRECT, SPECIFIC answers to questions. Do NOT give generic templates or generic steps.',
-  'When someone asks "how do X", explain EXACTLY how to do X with concrete details, not generic frameworks.',
-  'Be helpful, clear, and concise. Give practical answers with specific examples relevant to Minecraft.',
-  'Default to Minecraft context. Only switch to other topics if the user explicitly asks.',
-  'Rules you must follow:',
-  '1) Give actual answers, not generic templates or frameworks.',
-  '2) Do not be negative, insulting, or abusive toward users.',
-  '3) Before giving instructions, ensure guidance is valid, safe, and non-hazardous.',
-  '4) Do not create malicious or unsafe content.',
-  '5) Refuse content involving violence, killing, explicit sexual content, slurs, hate, or harassment.',
-  '6) Refuse illegal, fraudulent, privacy-invasive, or harmful requests.',
-  '7) PLAYER PRIVACY: Never reveal player coordinates, location, base position, inventory, health, username, or server address. If asked, only respond "I can\'t share that."',
-  'If refusing, keep it short and polite.'
-].join(' ');
-const SYSTEM_PROMPT = process.env.SYSTEM_PROMPT || DEFAULT_SYSTEM_PROMPT;
-const HISTORY_LIMIT = Number(process.env.HISTORY_LIMIT || 8);
-const MAX_MESSAGE_LENGTH = Number(process.env.MAX_MESSAGE_LENGTH || 500);
-const MAX_SESSION_ID_LENGTH = Number(process.env.MAX_SESSION_ID_LENGTH || 64);
 const RATE_LIMIT_WINDOW_MS = Number(process.env.RATE_LIMIT_WINDOW_MS || 60_000);
-const RATE_LIMIT_MAX_REQUESTS = Number(process.env.RATE_LIMIT_MAX_REQUESTS || 30);
-const MC_AGENT_RATE_LIMIT_WINDOW_MS = Number(process.env.MC_AGENT_RATE_LIMIT_WINDOW_MS || 60_000);
-const MC_AGENT_RATE_LIMIT_MAX_REQUESTS = Number(process.env.MC_AGENT_RATE_LIMIT_MAX_REQUESTS || 600);
-const ENABLE_CONTENT_FILTER = String(process.env.ENABLE_CONTENT_FILTER || 'true').toLowerCase() === 'true';
-const SAFETY_REFUSAL_TEXT = process.env.SAFETY_REFUSAL_TEXT || "I can't help with that.";
-const SHOW_REASONING_SUMMARY = String(process.env.SHOW_REASONING_SUMMARY || 'false').toLowerCase() === 'true';
-const REASONING_SUMMARY_MODE = (process.env.REASONING_SUMMARY_MODE || 'brief').toLowerCase();
-const WEB_SEARCH_ENABLED = String(process.env.WEB_SEARCH_ENABLED || 'false').toLowerCase() === 'true';
-const WEB_SEARCH_TIMEOUT_MS = Number(process.env.WEB_SEARCH_TIMEOUT_MS || 4500);
-const WEB_CONTEXT_MAX_CHARS = Number(process.env.WEB_CONTEXT_MAX_CHARS || 1200);
-const WEB_RESULT_LIMIT = Number(process.env.WEB_RESULT_LIMIT || 3);
-const REPLY_WRAP_CHARS = Number(process.env.REPLY_WRAP_CHARS || 35);
-const REPLY_WRAP_OVERFLOW = Number(process.env.REPLY_WRAP_OVERFLOW || 20);
-const SOLASGPT_FORWARD_MAX_CHARS = Number(process.env.SOLASGPT_FORWARD_MAX_CHARS || 450);
-const PHRASING_KNOWLEDGE_ENABLED = String(process.env.PHRASING_KNOWLEDGE_ENABLED || 'false').toLowerCase() === 'true';
-const PHRASING_FALLBACK_ON_LOW_QUALITY = String(process.env.PHRASING_FALLBACK_ON_LOW_QUALITY || 'false').toLowerCase() === 'true';
-const UPSTREAM_FALLBACK_ENABLED = String(process.env.UPSTREAM_FALLBACK_ENABLED || 'true').toLowerCase() === 'true';
-const GENERATED_IMAGE_SIZE = Number(process.env.GENERATED_IMAGE_SIZE || 480);
-const API_KEYS = (process.env.API_KEYS || '')
-  .split(',')
-  .map((value) => value.trim())
-  .filter(Boolean);
-const REQUIRE_API_KEY = String(process.env.REQUIRE_API_KEY || (API_KEYS.length > 0 ? 'true' : 'false')).toLowerCase() === 'true';
+const RATE_LIMIT_MAX_REQUESTS = Number(process.env.RATE_LIMIT_MAX_REQUESTS || 80);
+const MC_AGENT_RATE_LIMIT_WINDOW_MS = Number(process.env.MC_AGENT_RATE_LIMIT_WINDOW_MS || 10_000);
+const MC_AGENT_RATE_LIMIT_MAX_REQUESTS = Number(process.env.MC_AGENT_RATE_LIMIT_MAX_REQUESTS || 120);
+const PORT = Number(process.env.PORT || 8787);
+const PROVIDER = process.env.PROVIDER || 'local';
+const MODEL = process.env.MODEL || 'solas-default';
+const MAX_MESSAGE_LENGTH = Number(process.env.MAX_MESSAGE_LENGTH || 4000);
+const REQUIRE_API_KEY = String(process.env.REQUIRE_API_KEY || 'false').toLowerCase() === 'true';
 
-const sessions = new Map();
-const sessionFeedback = new Map();
-const rateLimits = new Map();
-const mcAgentRateLimits = new Map();
-const mcAgentSessions = new Map();
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-const MC_MEMORY_FILE = process.env.MC_AGENT_MEMORY_FILE || path.join(__dirname, 'mc_agent_memory.json');
+const app = express();
+app.use(cors());
+app.use(express.json({ limit: '2mb' }));
 
-function safeReadJson(filePath, fallback) {
-  try {
-    if (!fs.existsSync(filePath)) return fallback;
-    const raw = fs.readFileSync(filePath, 'utf8');
-    if (!raw.trim()) return fallback;
-    return JSON.parse(raw);
-  } catch {
-    return fallback;
-  }
-}
-
-function loadMcMemory() {
-  const data = safeReadJson(MC_MEMORY_FILE, { sessions: {} });
-  if (!data || typeof data !== 'object' || typeof data.sessions !== 'object') {
-    return;
-  }
-  for (const [sid, ctx] of Object.entries(data.sessions)) {
-    if (!sid || !ctx || typeof ctx !== 'object') continue;
-    mcAgentSessions.set(sid, ctx);
-  }
-}
-
-let mcMemoryWritePending = false;
-function scheduleMcMemorySave() {
-  if (mcMemoryWritePending) return;
-  mcMemoryWritePending = true;
-  setTimeout(() => {
-    mcMemoryWritePending = false;
-    try {
-      const sessionsObj = Object.fromEntries(mcAgentSessions.entries());
-      const payload = {
-        savedAt: Date.now(),
-        sessions: sessionsObj
-      };
-      fs.writeFileSync(MC_MEMORY_FILE, JSON.stringify(payload, null, 2), 'utf8');
-    } catch {
-      // ignore persistence errors to keep runtime stable
-    }
-  }, 500);
-}
-
-function parseEnchantGoals(text) {
-  const goals = [
-    'mending',
-    'protection 4',
-    'unbreaking 3',
-    'sharpness 5',
-    'knockback 1',
-    'looting 3',
-    'efficiency 5'
-  ];
-  const normalized = normalizeText(text).toLowerCase();
-  const wanted = goals.filter((g) => normalized.includes(g));
-  if (/\b(all enchant|all books|every book|all other enchanting books)\b/.test(normalized)) {
-    return [
-      ...new Set([
-        ...wanted,
-        'thorns 3', 'feather falling 4', 'respiration 3', 'aqua affinity',
-        'depth strider 3', 'swift sneak 3', 'fire protection 4',
-        'projectile protection 4', 'blast protection 4', 'fortune 3',
-        'silk touch', 'power 5', 'flame', 'infinity', 'punch 2',
-        'piercing 4', 'multishot', 'quick charge 3', 'riptide 3',
-        'channeling', 'impaling 5'
-      ])
-    ];
-  }
-  return wanted;
-}
-
-function getSessionMessages(sessionId) {
-  if (!sessions.has(sessionId)) {
-    sessions.set(sessionId, []);
-  }
-  return sessions.get(sessionId);
-}
-
-function getSessionFeedback(sessionId) {
-  if (!sessionFeedback.has(sessionId)) {
-    sessionFeedback.set(sessionId, []);
-  }
-  return sessionFeedback.get(sessionId);
-}
-
-function appendSessionFeedback(sessionId, feedbackEntry) {
-  const current = getSessionFeedback(sessionId);
-  const next = [...current, feedbackEntry].slice(-5);
-  sessionFeedback.set(sessionId, next);
-}
-
-function buildSolasForwardMessage(sessionId, userMessageForModel) {
-  const history = trimHistory(getSessionMessages(sessionId), Math.min(HISTORY_LIMIT, 4));
-  const feedbackItems = getSessionFeedback(sessionId).slice(-3);
-
-  const historyText = history
-    .map((msg) => `${msg.role === 'assistant' ? 'Assistant' : 'User'}: ${normalizeText(msg.content)}`)
-    .join('\n');
-
-  const feedbackText = feedbackItems
-    .map((item, idx) => `${idx + 1}) rating=${item.rating}; improve=${item.improvement || 'n/a'}`)
-    .join('\n');
-
-  const sections = [
-    'You are answering for a Minecraft AI agent context. Improve on previous attempts instead of repeating low-quality output.',
-    feedbackText ? `Recent explicit feedback to apply:\n${feedbackText}` : '',
-    historyText ? `Recent conversation context:\n${historyText}` : '',
-    `Current user request:\n${userMessageForModel}`
-  ].filter(Boolean);
-
-  return sections.join('\n\n');
-}
-
-loadMcMemory();
-
-function trimHistory(messages, maxTurns) {
-  const maxMessages = Math.max(2, maxTurns * 2);
-  if (messages.length <= maxMessages) return messages;
-  return messages.slice(messages.length - maxMessages);
-}
-
-function normalizeText(text) {
-  return String(text || '').replace(/\s+/g, ' ').trim();
+function buildRedstoneSimulatorHtml() {
+  return `<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Solas Redstone Simulator</title>
+  <style>
+    body { background: #0e1318; color: #e6eef8; font-family: monospace; margin: 0; }
+    .wrap { max-width: 860px; margin: 28px auto; padding: 0 16px; }
+    .panel { border: 1px solid #2b3f53; border-radius: 12px; background: #121a21; padding: 16px; }
+    h1 { margin: 0 0 8px; }
+    p { color: #9fb4c8; }
+    a { color: #8cd9ff; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="panel">
+      <h1>Solas Redstone Simulator</h1>
+      <p>Backend is running. The full simulator UI is temporarily simplified while server syntax issues are being stabilized.</p>
+      <p>API endpoints remain available:</p>
+      <p><a href="/chat-plain">/chat-plain</a> and <a href="/redstone-sim">/redstone-sim</a></p>
+    </div>
+  </div>
+</body>
+</html>`;
 }
 
 function escapeSvgText(text) {
@@ -902,7 +742,7 @@ function phraseKnowledgeReply(userMessage, webContext) {
   const webGrounded = webGroundedFallbackReply(originalQuestion, webContext);
 
   if (!text) {
-    return 'I am ready. Ask me anything and I will answer clearly.';
+    return 'I am here. what do you need?';
   }
   if (factual) {
     return factual;
@@ -911,10 +751,36 @@ function phraseKnowledgeReply(userMessage, webContext) {
     return webGrounded;
   }
   if (greetingPattern.test(text)) {
-    return 'Hello! I am SolasGPT. Ask me a question and I will give a clear, friendly answer with useful detail when it helps.';
+    return 'yo, what do you need?';
   }
   if (text.includes('what can you do')) {
     return 'I can explain topics, summarize information, help with writing, answer factual questions, and guide you through Minecraft strategies, building, and combat ideas step by step. If you want, I can also break an answer into simple parts or examples.';
+  }
+  const computerReplies = [
+    { pattern: /\b(file\s*systems?|filesystems?)\b/, answer: 'A file system is how storage is organized so the OS can store, find, and protect files. It tracks metadata, directory structure, permissions, and physical block mapping.' },
+    { pattern: /\b(cpu|processor)\b/, answer: 'The CPU executes program instructions, handles logic and arithmetic, and coordinates system tasks. Performance depends on architecture, clock speed, cache, and core/thread count.' },
+    { pattern: /\bgpu\b|\bgraphics\b/, answer: 'The GPU is optimized for massively parallel work like graphics rendering, video processing, and many AI workloads.' },
+    { pattern: /\bssd\b|\bhdd\b|\bstorage\b/, answer: 'Storage keeps data long-term. HDDs are cheaper per GB but slower, while SSDs are much faster for random access and system responsiveness.' },
+    { pattern: /\b(encoder|decoder|encoding|decoding|codec|binary\s+encoding)\b/, answer: 'An encoder converts data into a target format and a decoder reverses it. Binary encoding stores information as bits and bytes with defined format rules.' },
+    { pattern: /\b(screen|display|monitor|refresh\s*rate)\b/, answer: 'A display shows pixel frames sent by the GPU. Resolution controls detail, refresh rate controls smoothness, and response time affects motion clarity.' },
+    { pattern: /\b(ram|memory|cache|virtual\s+memory)\b/, answer: 'RAM is fast working memory for active programs; CPU cache is even faster memory close to cores. Virtual memory extends address space by paging to disk when RAM is tight.' }
+  ];
+  for (const item of computerReplies) {
+    if (item.pattern.test(text)) {
+      return item.answer;
+    }
+  }
+  if (/\b(hoglin\s+farm|hoglin\b|wither\s+skeleton\s+farm|wither\s+skeleton\b|wither\s+skull\s+farm)\b/.test(text)) {
+    if (/\bhoglin\b/.test(text)) {
+      return 'Hoglin farm checklist: build above the Nether roof in a crimson biome section, make large crimson-nylium spawning platforms, place warped fungus to path hoglins into trapdoors/open edges, drop them into a kill chamber (fall + looting or magma), and add spawn-proofing around the farm area. Prioritize platform count, pathing consistency, and AFK height for stable rates.';
+    }
+    return 'Wither skeleton farm checklist: use a Nether fortress intersection, clear and slab/spawn-proof surrounding fortress bounding area, build nether-brick spawn platforms with wither roses to filter mobs, use piglins or pathing to funnel skeletons into a kill chamber, and AFK at the correct elevation. Reliable rates come from fortress-only spawning control plus strong perimeter spawn-proofing.';
+  }
+  if (/\b(duper|duping|grief|wipe\s+world|destroy\s+world|orbital\s+strike\s+cannon)\b/.test(text)) {
+    return 'I cannot help with griefing, exploit abuse, or destructive world-wipe setups. I can help with legitimate redstone engineering, survival-safe automation, and performance-friendly machine design.';
+  }
+  if (/\b(minecraft\s+physics|redstone\s+physics|redstone\s+timing|game\s+tick|redstone\s+tick|quasi\s*connectivity|observer|chunk\s+border|chunk\s+loading|piston\s+limit|slime\s+block|honey\s+block|blast\s+resistance|tnt\s+fuse)\b/.test(text)) {
+    return 'Minecraft physics quick guide: the game runs at 20 ticks per second, and one redstone tick is 2 game ticks. Repeaters delay in redstone ticks, observers output short pulses, and many circuits depend on update order. Pistons can push up to 12 movable blocks, slime and honey do not stick to each other, and chunk borders can desync machines if parts unload. For TNT timing, the standard fuse is 80 game ticks (about 4 seconds at full TPS). If you want, I can break this into a build checklist for your specific machine.';
   }
   if (text.includes('explain')) {
     return `Sure — here is a clearer explanation of ${topic}: start with the main idea, then connect it to the important parts, and finally look at how it works in practice. If you want, I can also turn that into a step-by-step example.${sourceLine}`;
@@ -1166,6 +1032,7 @@ function normalizeState(state) {
   const nearestEnemyHealth = Number(state.nearestEnemyHealth);
   const nearestEnemyArmorPieces = Number(state.nearestEnemyArmorPieces);
   const nearestEnemyVelX = Number(state.nearestEnemyVelX);
+  const nearestEnemyVelY = Number(state.nearestEnemyVelY);
   const nearestEnemyVelZ = Number(state.nearestEnemyVelZ);
   const nearestBedDistance = Number(state.nearestBedDistance);
   const nearestBedDefenseScore = Number(state.nearestBedDefenseScore);
@@ -1210,6 +1077,7 @@ function normalizeState(state) {
     const nearestHostileDx = Number(state.nearestHostileDx);
     const nearestHostileDz = Number(state.nearestHostileDz);
     const nearestEnemyDx = Number(state.nearestEnemyDx);
+    const nearestEnemyDy = Number(state.nearestEnemyDy);
     const nearestEnemyDz = Number(state.nearestEnemyDz);
   return {
     x: Number.isFinite(x) ? x : 0,
@@ -1321,7 +1189,9 @@ function normalizeState(state) {
     nearestEnemyHasMeleeWeapon: Boolean(state.nearestEnemyHasMeleeWeapon),
     nearestEnemyHasShield: Boolean(state.nearestEnemyHasShield),
     nearestEnemyVelX: Number.isFinite(nearestEnemyVelX) ? nearestEnemyVelX : 0,
+    nearestEnemyVelY: Number.isFinite(nearestEnemyVelY) ? nearestEnemyVelY : 0,
     nearestEnemyVelZ: Number.isFinite(nearestEnemyVelZ) ? nearestEnemyVelZ : 0,
+      nearestEnemyDy: Number.isFinite(nearestEnemyDy) ? nearestEnemyDy : 0,
       nearestEnemyDx: Number.isFinite(nearestEnemyDx) ? nearestEnemyDx : 0,
       nearestEnemyDz: Number.isFinite(nearestEnemyDz) ? nearestEnemyDz : 0,
     bedNearby: Boolean(state.bedNearby),
@@ -1332,6 +1202,85 @@ function normalizeState(state) {
     nearestBedDefenseBlock: normalizeText(state.nearestBedDefenseBlock || '').toLowerCase(),
     lastPearlUseTick: Number.isFinite(lastPearlUseTick) ? lastPearlUseTick : -1
   };
+}
+
+function summarizeVisibleCombatEntities(state) {
+  const seen = [];
+  const focused = normalizeText(state.focusedEntity || '').toLowerCase();
+  const nearestEnemy = normalizeText(state.nearestEnemyName || '');
+  const nearestHostile = normalizeText(state.nearestHostile || '').toLowerCase();
+
+  if (focused) seen.push(focused.replace(/^minecraft:/, ''));
+  if (nearestEnemy) seen.push(nearestEnemy);
+  if (nearestHostile) seen.push(nearestHostile.replace(/^entity\.[^.]+\./, ''));
+
+  return [...new Set(seen.filter(Boolean))].slice(0, 3);
+}
+
+function pickPreferredPvpStyle(state) {
+  const hasMacePvpKit = state.maceSlot >= 0 && state.maceCount > 0 && state.windChargeSlot >= 0 && state.windChargeCount > 0;
+  const hasCrystalPvpKit = state.obsidianSlot >= 0
+    && state.endCrystalSlot >= 0
+    && state.respawnAnchorSlot >= 0
+    && state.glowstoneSlot >= 0
+    && state.obsidianCount > 0
+    && state.endCrystalCount > 0
+    && state.respawnAnchorCount > 0
+    && state.glowstoneCount > 0;
+
+  if (hasMacePvpKit) return 'mace';
+  if (hasCrystalPvpKit) return 'crystal';
+  return 'sword';
+}
+
+function applyLookSearch(action, state, pulse, requestedCombatTarget, noteParts) {
+  const visibleEntities = summarizeVisibleCombatEntities(state);
+  const scanPhase = pulse % 16;
+  const sweepRight = scanPhase < 8;
+
+  action.forward = false;
+  action.back = false;
+  action.left = false;
+  action.right = false;
+  action.sprint = false;
+  action.jump = false;
+  action.durationTicks = 4;
+  action.yawDelta = sweepRight ? 7 : -7;
+  action.pitchDelta = clamp((((scanPhase % 8) < 4 ? -10 : 12) - state.pitch) / 4, -4, 4);
+
+  if (visibleEntities.length > 0) {
+    const desired = requestedCombatTarget || 'combat target';
+    noteParts.push(`Search by sight: scanning for ${desired}; observed ${visibleEntities.join(', ')}.`);
+  } else {
+    const desired = requestedCombatTarget || 'combat target';
+    noteParts.push(`Search by sight: sweeping view for ${desired}.`);
+  }
+}
+
+function getEnemyLeadTicks(distance, style) {
+  const baseTicks = style === 'crystal' ? 3.5 : 2.5;
+  return clamp(baseTicks + (distance * 0.28), 2, style === 'crystal' ? 6 : 5);
+}
+
+function getPredictedEnemyOffset(state, distance, style) {
+  const leadTicks = getEnemyLeadTicks(distance, style);
+  return {
+    dx: state.nearestEnemyDx + (state.nearestEnemyVelX * leadTicks),
+    dy: state.nearestEnemyDy + (state.nearestEnemyVelY * leadTicks),
+    dz: state.nearestEnemyDz + (state.nearestEnemyVelZ * leadTicks),
+    leadTicks
+  };
+}
+
+function isIncomingMaceDive(state, targetDist) {
+  const enemyMainItem = normalizeText(state.nearestEnemyMainItem || '').toLowerCase();
+  const holdingMace = /mace/.test(enemyMainItem);
+  const maceLikePressure = holdingMace || /wind_charge/.test(enemyMainItem) || state.nearestEnemyArmorPieces >= 3;
+  return maceLikePressure
+    && state.nearestEnemyDy > 2.2
+    && state.nearestEnemyVelY < -0.5
+    && targetDist > 0
+    && targetDist < 4.8;
 }
 
 function buildMinecraftAction(objective, state = {}, sessionCtx = {}) {
@@ -1458,11 +1407,12 @@ function buildMinecraftAction(objective, state = {}, sessionCtx = {}) {
   const lootYaw = clamp(Math.round(lootCross * 6), -7, 7);
 
   if (enemyNearby) {
-    const lateralLead = (s.lookX * s.nearestEnemyVelZ) - (s.lookZ * s.nearestEnemyVelX);
-    const predictiveYaw = clamp(Math.round(lateralLead * 35), -9, 9);
+    const predictedEnemy = getPredictedEnemyOffset(s, s.nearestEnemyDistance, mode === 'crystal' ? 'crystal' : 'pvp');
+    const lateralLead = (s.lookX * predictedEnemy.dz) - (s.lookZ * predictedEnemy.dx);
+    const predictiveYaw = clamp(Math.round(lateralLead * 2.8), -9, 9);
     if (predictiveYaw !== 0) {
       action.yawDelta = predictiveYaw;
-      noteParts.push('Enemy movement prediction active.');
+      noteParts.push(`Enemy movement prediction active (${predictedEnemy.leadTicks.toFixed(1)} tick lead).`);
     }
   }
 
@@ -1662,12 +1612,15 @@ function buildMinecraftAction(objective, state = {}, sessionCtx = {}) {
     const usePlayerTarget = playerTargetMatches && (wantsPlayerCombatTarget || !mobTargetMatches);
     const hasMobTarget = mobTargetMatches;
     const hasPlayerTarget = usePlayerTarget;
-    const targetDx   = hasPlayerTarget ? s.nearestEnemyDx   : (hasMobTarget ? s.nearestHostileDx   : 0);
-    const targetDz   = hasPlayerTarget ? s.nearestEnemyDz   : (hasMobTarget ? s.nearestHostileDz   : 0);
     const targetDist = hasPlayerTarget ? s.nearestEnemyDistance : (hasMobTarget ? s.nearestHostileDistance : -1);
     const hasTarget  = targetDist > 0;
     const targetName = hasPlayerTarget ? (s.nearestEnemyName || 'player') : (s.nearestHostile || s.focusedEntity || 'target');
+    const preferredPvpStyle = pickPreferredPvpStyle(s);
+    const predictedEnemyOffset = hasPlayerTarget ? getPredictedEnemyOffset(s, targetDist, preferredPvpStyle) : null;
+    const targetDx   = hasPlayerTarget ? predictedEnemyOffset.dx : (hasMobTarget ? s.nearestHostileDx   : 0);
+    const targetDz   = hasPlayerTarget ? predictedEnemyOffset.dz : (hasMobTarget ? s.nearestHostileDz   : 0);
     const windMaceComboStage = Number(sessionCtx.windMaceComboStage || 0);
+    const incomingMaceDive = hasPlayerTarget && isIncomingMaceDive(s, targetDist);
 
     // ── Compute yaw correction via atan2 (stable lock-on) ────────────────────
     // MC yaw: 0=south(+Z), 90=west(−X), −90=east(+X), 180=north(−Z)
@@ -1685,10 +1638,10 @@ function buildMinecraftAction(objective, state = {}, sessionCtx = {}) {
     }
     // Use rawYaw (total error) for alignment checks, not per-tick aimYawDelta
     const isAligned = hasEnemyInCrosshair || (hasTarget && Math.abs(rawYaw) < 22);
-    const canStrafe = hasTarget && Math.abs(rawYaw) < 12 && targetDist >= 2.0 && targetDist < 3.5;
+    const canStrafe = hasTarget && Math.abs(rawYaw) < 8 && targetDist >= 3.0 && targetDist < 4.2;
     const isFacing  = hasTarget && Math.abs(rawYaw) < 60; // broad facing check for movement
     const attackWindow = hasTarget && isAligned && targetDist <= 3.35;
-    const holdGroundRange = hasTarget && targetDist >= 3.0 && targetDist <= 3.7;
+    const holdGroundRange = hasTarget && targetDist >= 3.7 && targetDist <= 4.2;
     // User-configured aggression profile: keep fighting instead of low-HP retreating.
     const shouldRetreat = false;
     const enemyHoldingSword = /_sword|trident/.test(s.nearestEnemyMainItem || '');
@@ -1698,11 +1651,14 @@ function buildMinecraftAction(objective, state = {}, sessionCtx = {}) {
     const pressureCycle = pulse % 10;
     const burstWindow = pressureCycle < 9; // ~90% combo pressure window
     const shouldBurstIn = hasTarget && !shouldRetreat && burstWindow && isFacing && (targetDist > 2.4 && targetDist <= 4.8);
-    const shouldStepOut = hasTarget && !shouldRetreat && (comboPressure || pressureCycle >= 4) && targetDist < 3.0;
+    const shouldStepOut = hasTarget && !shouldRetreat && veryLowHp && comboPressure && targetDist < 2.3;
     const retaliateWindow = damageAggroActive && hasEnemyInCrosshair && s.focusedDistance > 0 && s.focusedDistance <= 3.35;
     const shouldComboPush = hasTarget && !shouldRetreat && isAligned && burstWindow && targetDist >= 2.6 && targetDist <= 3.4;
+    const forceMeleeCommit = hasTarget && isFacing && targetDist > 0 && targetDist <= 3.6;
 
-    action.hotbarSlot  = s.swordSlot >= 0 ? s.swordSlot : s.axeSlot;
+    action.hotbarSlot  = preferredPvpStyle === 'mace'
+      ? (hasBreachMace && enemyHasShield ? s.breachMaceSlot : s.maceSlot)
+      : (s.swordSlot >= 0 ? s.swordSlot : s.axeSlot);
     action.attack      = (attackWindow || retaliateWindow || shouldComboPush) && !shouldRetreat;
     action.forward     = (shouldCloseGap || shouldBurstIn || shouldComboPush) && !shouldRetreat;
     action.back        = shouldRetreat || shouldStepOut || (hasTarget && !shouldBurstIn && !preferredKiteRange && targetDist < 3.1);
@@ -1712,9 +1668,13 @@ function buildMinecraftAction(objective, state = {}, sessionCtx = {}) {
     action.right       = !strafeLeft && (canStrafe || preferredKiteRange) && !shouldRetreat;
     action.jump        = false;
     // When scanning with no target, rotate slowly; when targeting, apply per-tick correction
-    action.yawDelta    = hasTarget ? aimYawDelta : 4;
+    action.yawDelta    = hasTarget ? aimYawDelta : 0;
     action.pitchDelta  = hasTarget ? clamp((-s.pitch) / pvpDuration, -5, 5) : 0;
     action.durationTicks = pvpDuration;
+
+    if (!hasTarget) {
+      applyLookSearch(action, s, pulse, requestedCombatTarget, noteParts);
+    }
 
     if (holdGroundRange && !shouldRetreat && !shouldBurstIn) {
       action.forward = false;
@@ -1724,19 +1684,48 @@ function buildMinecraftAction(objective, state = {}, sessionCtx = {}) {
 
     if ((attackWindow || shouldComboPush) && !shouldRetreat) {
       // Stay close enough to continue landing hits, then micro-disengage briefly.
-      action.forward = targetDist > 2.55;
+      action.forward = targetDist > 2.1;
       action.back = false;
-      action.sprint = targetDist > 3.0;
-      if (pulse % 6 >= 4 && targetDist < 2.8) {
-        action.back = true;
-        action.forward = false;
-        action.sprint = false;
+      action.sprint = targetDist > 2.6;
+    }
+
+    if (forceMeleeCommit && !incomingMaceDive) {
+      action.attack = true;
+      action.forward = targetDist > 1.25;
+      action.back = targetDist < 0.92;
+      action.left = false;
+      action.right = false;
+      action.sprint = targetDist > 2.15;
+      action.jump = action.jump || ((pulse % 7) === 0 && targetDist > 1.8 && targetDist < 3.1);
+      action.use = false;
+      noteParts.push('Melee commit: hard close and sustained swings.');
+    }
+
+    if (incomingMaceDive) {
+      action.attack = false;
+      action.left = false;
+      action.right = false;
+      action.forward = false;
+      action.back = true;
+      action.sprint = false;
+      action.jump = false;
+      action.durationTicks = 3;
+      if (canUsePearl) {
+        action.hotbarSlot = s.pearlSlot;
+        action.use = true;
+        action.back = false;
+        noteParts.push('Mace-dive defense: last-second pearl escape.');
+      } else if (hasShield) {
+        action.use = true;
+        noteParts.push('Mace-dive defense: last-second shield block.');
+      } else {
+        noteParts.push('Mace-dive defense: spacing away without pearl or shield.');
       }
     }
 
     noteParts.push(hasTarget
-      ? `PVP: lock ${targetName} dist=${targetDist.toFixed(1)} err=${rawYaw.toFixed(0)}° aligned=${isAligned} kite=${preferredKiteRange} burst=${shouldBurstIn}`
-      : 'PVP: scanning for target.');
+      ? `PVP: ${preferredPvpStyle} style on ${targetName} dist=${targetDist.toFixed(1)} err=${rawYaw.toFixed(0)}° aligned=${isAligned} kite=${preferredKiteRange} burst=${shouldBurstIn}`
+      : `PVP: ${preferredPvpStyle} style searching by sight.`);
 
     // Low-HP retreat removed by request: stay in fight and rely on timed eating.
 
@@ -1772,7 +1761,7 @@ function buildMinecraftAction(objective, state = {}, sessionCtx = {}) {
       && !bowRangeFight
       && hasTarget
       && targetDist < 3.2
-      && (enemyAboutToStrike || enemyHoldingSword || comboPressure)
+      && (incomingMaceDive || (enemyAboutToStrike && veryLowHp) || (comboPressure && veryLowHp))
       && (pulse % 5 >= 2);
     // Block every other strafe window to mix offense and defense
     if (shouldShieldPressure) {
@@ -1840,7 +1829,8 @@ function buildMinecraftAction(objective, state = {}, sessionCtx = {}) {
       && isAligned
       && !shouldRetreat;
 
-    const canCartPvp = hasTarget
+    const canCartPvp = preferredPvpStyle !== 'sword'
+      && hasTarget
       && !shouldRetreat
       && s.railSlot >= 0
       && s.railCount > 0
@@ -1852,7 +1842,8 @@ function buildMinecraftAction(objective, state = {}, sessionCtx = {}) {
       && targetDist <= 5.0
       && isAligned;
 
-    const canMaceLeap = hasTarget
+    const canMaceLeap = preferredPvpStyle === 'mace'
+      && hasTarget
       && hasMace
       && !shouldRetreat
       && targetDist > 3.0
@@ -1860,7 +1851,8 @@ function buildMinecraftAction(objective, state = {}, sessionCtx = {}) {
       && isFacing
       && !hasWindCharge;
 
-    const canMaceBaitStrafe = hasTarget
+    const canMaceBaitStrafe = preferredPvpStyle === 'mace'
+      && hasTarget
       && hasMace
       && !shouldRetreat
       && targetDist >= 2.4
@@ -1945,7 +1937,11 @@ function buildMinecraftAction(objective, state = {}, sessionCtx = {}) {
       noteParts.push('Elytra-mace aerial dive: breaching with height advantage.');
     }
 
-    noteParts.push('PVP mode: strafing, spacing, and timed attacks.');
+    if (hasPlayerTarget && predictedEnemyOffset) {
+      noteParts.push(`PVP mode: predicted player path with ${predictedEnemyOffset.leadTicks.toFixed(1)} tick lead.`);
+    } else {
+      noteParts.push('PVP mode: strafing, spacing, and timed attacks.');
+    }
 
     if (/\b(web|cobweb|web trap)\b/.test(text) && s.cobwebSlot >= 0 && s.cobwebCount > 0 && enemyVeryClose) {
       action.use = true;
@@ -2016,7 +2012,8 @@ function buildMinecraftAction(objective, state = {}, sessionCtx = {}) {
       noteParts.push('PVP loot pickup: collecting needed dropped items.');
     }
 
-    const canWindMaceCombo = hasTarget
+    const canWindMaceCombo = preferredPvpStyle === 'mace'
+      && hasTarget
       && hasMace
       && hasWindCharge
       && !shouldRetreat
@@ -2081,10 +2078,11 @@ function buildMinecraftAction(objective, state = {}, sessionCtx = {}) {
     const crystalUsePlayerTarget = crystalPlayerTarget && (wantsPlayerCombatTarget || !crystalMobTarget);
     const crystalHasTarget = crystalUsePlayerTarget || crystalMobTarget;
     const crystalDist = crystalUsePlayerTarget ? s.nearestEnemyDistance : (crystalMobTarget ? s.nearestHostileDistance : -1);
+    const crystalPredictedEnemy = crystalUsePlayerTarget ? getPredictedEnemyOffset(s, crystalDist, 'crystal') : null;
     let crystalRawYaw = 0;
     let crystalYawDelta = 0;
-    const crystalTargetDx = crystalUsePlayerTarget ? s.nearestEnemyDx : (crystalMobTarget ? s.nearestHostileDx : 0);
-    const crystalTargetDz = crystalUsePlayerTarget ? s.nearestEnemyDz : (crystalMobTarget ? s.nearestHostileDz : 0);
+    const crystalTargetDx = crystalUsePlayerTarget ? crystalPredictedEnemy.dx : (crystalMobTarget ? s.nearestHostileDx : 0);
+    const crystalTargetDz = crystalUsePlayerTarget ? crystalPredictedEnemy.dz : (crystalMobTarget ? s.nearestHostileDz : 0);
     if (crystalHasTarget && (Math.abs(crystalTargetDx) > 0.05 || Math.abs(crystalTargetDz) > 0.05)) {
       const targetYaw = Math.atan2(-crystalTargetDx, crystalTargetDz) * (180 / Math.PI);
       crystalRawYaw = targetYaw - s.yaw;
@@ -2096,6 +2094,21 @@ function buildMinecraftAction(objective, state = {}, sessionCtx = {}) {
     const crystalHoldRange = crystalHasTarget && crystalDist >= 2.4 && crystalDist <= 4.6;
     const crystalNeedClose = crystalHasTarget && crystalDist > 4.4 && Math.abs(crystalRawYaw) < 65;
     const crystalTooClose = crystalHasTarget && crystalDist < 1.9;
+    const enemyAnchorPressure = /respawn_anchor|glowstone/.test(s.nearestEnemyMainItem || '');
+    const enemyCrystalPressure = /end_crystal/.test(s.nearestEnemyMainItem || '');
+    const shouldDoubleTotem = crystalUsePlayerTarget
+      && s.totemSlot >= 0
+      && s.totemCount >= 2
+      && (enemyCrystalPressure || enemyAnchorPressure)
+      && (s.health <= 15 || crystalDist < 4.8);
+    const canCrystalDTap = crystalUsePlayerTarget
+      && hasCrystalKit
+      && s.swordSlot >= 0
+      && crystalAligned
+      && crystalDist > 1.8
+      && crystalDist < 4.3
+      && !shouldDoubleTotem;
+    const crystalComboPhase = pulse % 7;
 
     action.yawDelta = crystalHasTarget ? crystalYawDelta : 3;
     action.pitchDelta = crystalHasTarget ? clamp((-s.pitch) / action.durationTicks, -5, 5) : 0;
@@ -2142,15 +2155,36 @@ function buildMinecraftAction(objective, state = {}, sessionCtx = {}) {
       action.left = false;
       action.right = false;
       noteParts.push('Totem safety priority active.');
+    } else if (shouldDoubleTotem) {
+      action.hotbarSlot = s.totemSlot;
+      action.use = false;
+      action.attack = false;
+      action.forward = false;
+      action.back = crystalDist < 3.1;
+      action.left = false;
+      action.right = false;
+      noteParts.push(enemyAnchorPressure
+        ? 'CPvP defense: double totem hold against anchor pressure.'
+        : 'CPvP defense: double totem hold against crystal pressure.');
     } else if (hasCrystalKit && s.obsidianSlot >= 0 && s.endCrystalSlot >= 0) {
-      if (pulse % 3 === 0) {
+      if (canCrystalDTap && crystalComboPhase === 0) {
+        action.hotbarSlot = s.swordSlot;
+        action.attack = true;
+        action.use = false;
+        action.forward = crystalDist > 2.2;
+        action.back = false;
+        noteParts.push('Crystal dtap: sword tap to force movement before placement.');
+      } else if (canCrystalDTap && crystalComboPhase <= 2) {
         action.hotbarSlot = s.obsidianSlot;
         action.use = true;
+        action.attack = false;
         action.forward = false;
         action.back = false;
         action.left = false;
         action.right = false;
-        noteParts.push('Crystal setup: placing obsidian.');
+        noteParts.push(canCrystalDTap
+          ? 'Crystal dtap: placing obsidian after sword pressure.'
+          : 'Crystal setup: placing obsidian.');
       } else {
         action.hotbarSlot = s.endCrystalSlot;
         action.use = true;
@@ -2159,7 +2193,9 @@ function buildMinecraftAction(objective, state = {}, sessionCtx = {}) {
         action.back = false;
         action.left = false;
         action.right = false;
-        noteParts.push('Crystal detonation cycle active.');
+        noteParts.push(canCrystalDTap
+          ? 'Crystal dtap: crystal place and detonate follow-up.'
+          : 'Crystal detonation cycle active.');
       }
     } else if (s.respawnAnchorSlot >= 0 && s.glowstoneSlot >= 0 && s.respawnAnchorCount > 0 && s.glowstoneCount > 0) {
       action.hotbarSlot = (pulse % 2 === 0) ? s.respawnAnchorSlot : s.glowstoneSlot;
@@ -2729,7 +2765,7 @@ function buildMinecraftAction(objective, state = {}, sessionCtx = {}) {
   const inMeleeRange = activeEnemyDist > 0 && activeEnemyDist <= 4.2;
   const inBowRange = activeEnemyDist > 6.0;
   if (hasAnyCombatTarget && combatIntent && !action.sneak) {
-    if (inMeleeRange && hasMace && hasWindCharge && s.onGround && (pulse % 14 === 3)) {
+    if (preferredPvpStyle === 'mace' && inMeleeRange && hasMace && hasWindCharge && s.onGround && (pulse % 14 === 3)) {
       action.use = true;
       action.attack = false;
       action.jump = true;
@@ -2742,7 +2778,7 @@ function buildMinecraftAction(objective, state = {}, sessionCtx = {}) {
       if (action.attack) {
         noteParts.push('Combat optimizer: axe selected to counter shield.');
       }
-    } else if (inMeleeRange && hasMace) {
+    } else if (preferredPvpStyle === 'mace' && inMeleeRange && hasMace) {
       action.hotbarSlot = hasBreachMace && enemyHasShield ? s.breachMaceSlot : s.maceSlot;
       if (action.attack) {
         noteParts.push('Combat optimizer: mace selected for melee burst.');
@@ -2754,7 +2790,7 @@ function buildMinecraftAction(objective, state = {}, sessionCtx = {}) {
         action.durationTicks = Math.max(action.durationTicks, 6);
       }
       noteParts.push('Combat optimizer: bow selected for ranged pressure.');
-    } else if (hasCrystalCombatKit && mode !== 'build' && mode !== 'general' && activeEnemyDist > 2.4 && activeEnemyDist < 5.2) {
+    } else if (preferredPvpStyle === 'crystal' && hasCrystalCombatKit && mode !== 'build' && mode !== 'general' && activeEnemyDist > 2.4 && activeEnemyDist < 5.2) {
       action.hotbarSlot = (pulse % 2 === 0) ? s.obsidianSlot : s.endCrystalSlot;
       action.use = true;
       action.attack = pulse % 2 !== 0;
@@ -3423,6 +3459,172 @@ app.get('/generated-image.svg', (req, res) => {
   const prompt = normalizeText(req.query?.prompt || 'creative scene') || 'creative scene';
   const svg = buildSubjectSvg(prompt);
   res.type('image/svg+xml').send(svg);
+});
+
+app.get('/redstone-sim', (req, res) => {
+  res.type('text/html').send(buildRedstoneSimulatorHtml());
+});
+
+app.post('/api/redstone-sim/optimize', (req, res) => {
+  try {
+    const goal = normalizeText(req.body?.goal || '');
+    if (!goal) {
+      return res.status(400).json({ ok: false, error: 'goal is required' });
+    }
+    if (REDSTONE_UNSAFE_PATTERNS.some((pattern) => pattern.test(goal))) {
+      return res.status(400).json({
+        ok: false,
+        error: 'Unsafe goal blocked. Use safe engineering goals like piston doors, storage sorters, farms, clocks, or flying machine demos.'
+      });
+    }
+
+    const maxAttemptsRaw = Number(req.body?.maxAttempts || 80);
+    const maxAttempts = Number.isFinite(maxAttemptsRaw) ? Math.max(5, Math.min(500, Math.round(maxAttemptsRaw))) : 80;
+    const targetRaw = Number(req.body?.targetScore || 0.9);
+    const targetScore = Number.isFinite(targetRaw) ? Math.max(0.5, Math.min(0.99, targetRaw)) : 0.9;
+
+    const result = optimizeRedstoneGoal(goal, maxAttempts, targetScore);
+    return res.json({ ok: true, result });
+  } catch (error) {
+    return res.status(500).json({ ok: false, error: error instanceof Error ? error.message : 'simulation failed' });
+  }
+});
+
+app.post('/api/redstone-sim/export-litematic', async (req, res) => {
+  try {
+    const goal = normalizeText(req.body?.goal || '');
+    if (!goal) {
+      return res.status(400).json({ ok: false, error: 'goal is required' });
+    }
+    if (REDSTONE_UNSAFE_PATTERNS.some((pattern) => pattern.test(goal))) {
+      return res.status(400).json({
+        ok: false,
+        error: 'Unsafe goal blocked. Use safe engineering goals like piston doors, storage sorters, farms, clocks, or flying machine demos.'
+      });
+    }
+
+    const bestCandidate = req.body?.bestCandidate && typeof req.body.bestCandidate === 'object'
+      ? req.body.bestCandidate
+      : {};
+    const safeName = goal;
+
+    const upstream = await fetch(`${LITEMATIC_BUILD_SERVICE_URL}/generate-litematic`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        goal,
+        candidate: bestCandidate,
+        name: safeName
+      })
+    });
+
+    const body = await upstream.json().catch(() => ({}));
+    if (!upstream.ok || !body?.ok) {
+      const err = body?.error || `litematic service error ${upstream.status}`;
+      const statusCode = upstream.status === 422 ? 422 : 502;
+      return res.status(statusCode).json({ ok: false, error: err, connectivity: body?.connectivity || null });
+    }
+
+    const fileName = String(body.fileName || '').trim();
+    const downloadUrl = fileName ? `/api/redstone-sim/download-litematic/${encodeURIComponent(fileName)}` : '';
+
+    return res.json({
+      ok: true,
+      fileName: body.fileName,
+      bytes: body.bytes,
+      dimensions: {
+        width: body.width,
+        height: body.height,
+        depth: body.depth
+      },
+      connectivityPass: body.connectivityPass,
+      connectivity: body.connectivity || null,
+      downloadUrl,
+      litematicsDir: body.litematicsDir
+    });
+  } catch (error) {
+    return res.status(500).json({ ok: false, error: error instanceof Error ? error.message : 'export failed' });
+  }
+});
+
+app.post('/api/redstone-sim/simulate', async (req, res) => {
+  try {
+    const goal = normalizeText(req.body?.goal || '');
+    if (!goal) {
+      return res.status(400).json({ ok: false, error: 'goal is required' });
+    }
+    const bestCandidate = req.body?.bestCandidate && typeof req.body.bestCandidate === 'object'
+      ? req.body.bestCandidate
+      : {};
+    const options = req.body?.options && typeof req.body.options === 'object'
+      ? req.body.options
+      : {};
+
+    const upstream = await fetch(`${LITEMATIC_BUILD_SERVICE_URL}/simulate-redstone`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ goal, candidate: bestCandidate, options })
+    });
+    const body = await upstream.json().catch(() => ({}));
+    if (!upstream.ok || !body?.ok) {
+      const err = body?.error || `litematic service error ${upstream.status}`;
+      return res.status(502).json({ ok: false, error: err });
+    }
+    return res.json({ ok: true, connectivity: body.connectivity, physics: body.physics, preview: body.preview });
+  } catch (error) {
+    return res.status(500).json({ ok: false, error: error instanceof Error ? error.message : 'simulate failed' });
+  }
+});
+
+app.post('/api/schematics/import-url', async (req, res) => {
+  try {
+    const url = normalizeText(req.body?.url || '');
+    if (!url) {
+      return res.status(400).json({ ok: false, error: 'url is required' });
+    }
+
+    const upstream = await fetch(`${LITEMATIC_BUILD_SERVICE_URL}/import-litematic`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ url })
+    });
+
+    const body = await upstream.json().catch(() => ({}));
+    if (!upstream.ok || !body?.ok) {
+      const err = body?.error || `litematic service error ${upstream.status}`;
+      return res.status(502).json({ ok: false, error: err });
+    }
+
+    const fileName = String(body.fileName || '').trim();
+    const downloadUrl = fileName ? `/api/redstone-sim/download-litematic/${encodeURIComponent(fileName)}` : '';
+
+    return res.json({
+      ok: true,
+      fileName,
+      sourceUrl: body.sourceUrl || '',
+      bytes: body.bytes,
+      downloadUrl,
+      litematicsDir: body.litematicsDir
+    });
+  } catch (error) {
+    return res.status(500).json({ ok: false, error: error instanceof Error ? error.message : 'import failed' });
+  }
+});
+
+app.get('/api/redstone-sim/download-litematic/:fileName', async (req, res) => {
+  try {
+    const fileName = req.params.fileName;
+    const upstream = await fetch(`${LITEMATIC_BUILD_SERVICE_URL}/download-litematic/${encodeURIComponent(fileName)}`);
+    if (!upstream.ok) {
+      return res.status(upstream.status).send('File not found');
+    }
+    res.setHeader('Content-Type', 'application/octet-stream');
+    res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
+    const buf = Buffer.from(await upstream.arrayBuffer());
+    return res.send(buf);
+  } catch (err) {
+    return res.status(500).send('Download failed');
+  }
 });
 
 app.get('/chat-plain', (req, res) => {

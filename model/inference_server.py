@@ -378,14 +378,14 @@ def intent_reply(user_message: str, history: list[str]) -> str | None:
         return fact
 
     if text in {'hi', 'hello', 'hey', 'yo'}:
-        return 'Hello! I am SolasAI. What would you like to ask?'
+        return 'yo, what do you need?'
     if text in {'thanks', 'thank you', 'thx'}:
         return "You're welcome."
     if text in {'bye', 'goodbye', 'see you'}:
         return 'Goodbye!'
 
     if text in {'who are you', 'what is your name'}:
-        return 'I am SolasAI, a custom local chatbot model.'
+        return 'just call me solas. what are we doing?'
 
     if text in {'explain more', 'more details', 'go deeper', 'elaborate'}:
         previous = last_assistant_message(history)
@@ -515,6 +515,15 @@ def looks_bad(text: str) -> bool:
     words = reply.split()
     if len(words) >= 3 and len(set(words[: min(8, len(words))])) <= 2:
         return True
+    # Detect gibberish-like output with too few vowels and very long nonsense tokens.
+    letters_only = ''.join(ch.lower() for ch in reply if ch.isalpha())
+    if letters_only:
+        vowels = sum(ch in 'aeiou' for ch in letters_only)
+        vowel_ratio = vowels / max(1, len(letters_only))
+        if len(letters_only) >= 30 and vowel_ratio < 0.24:
+            return True
+    if any(len(token) >= 14 and re.fullmatch(r"[a-zA-Z]+", token) for token in words):
+        return True
     if any(token in reply.lower() for token in ['asisistat', 'llllist', 'feryere']):
         return True
     return False
@@ -560,11 +569,20 @@ def answer_message(user_message: str, history: list[str]) -> str:
         return clean_reply(rule)
 
     best_answer, score = retrieval_reply(user_message, history)
-    if best_answer and score >= 0.74:
+    # Prefer grounded retrieval more aggressively to avoid noisy free-generation.
+    if best_answer and score >= 0.64:
+        return clean_reply(best_answer)
+
+    question_like = bool(re.search(r"\b(what|who|when|where|why|how|explain|define|capital|convert|difference|compare)\b", normalize_message(user_message)))
+    if best_answer and question_like and score >= 0.52:
         return clean_reply(best_answer)
 
     prompt = build_prompt(history, user_message)
-    reply = generate_reply(prompt, max_new_tokens=160, temperature=0.7, top_k=24)
+    reply = generate_reply(prompt, max_new_tokens=120, temperature=0.45, top_k=16)
+
+    low_quality, _ = is_low_quality_reply(reply)
+    if (looks_bad(reply) or low_quality) and best_answer and score >= 0.34:
+        return clean_reply(best_answer)
     if looks_bad(reply) and best_answer and score >= 0.42:
         return clean_reply(best_answer)
     if looks_bad(reply):

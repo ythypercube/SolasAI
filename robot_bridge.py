@@ -287,6 +287,10 @@ def route_execute():
     if not commands:
         return jsonify({"ok": False, "error": "No commands provided"}), 400
     try:
+        if not (hub_serial and hub_serial.is_open):
+            ok, msg = hub_connect()
+            if not ok:
+                return jsonify({"ok": False, "error": msg}), 503
         results = run_commands(commands)
         all_ok = all(r.get("ok", False) for r in results)
         return jsonify({"ok": all_ok, "results": results})

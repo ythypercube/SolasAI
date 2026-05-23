@@ -100,6 +100,7 @@ start_process backend "$NODE_CMD" "$SCRIPT_DIR/server.js"
 start_process robot_bridge "$PYTHON_CMD" "$SCRIPT_DIR/robot_bridge.py"
 
 echo
+echo "Server starting..."
 echo "SolasAI robot stack is starting."
 echo "Backend:        http://127.0.0.1:${DISPLAY_PORT}"
 echo "Inference:      http://127.0.0.1:8788"
