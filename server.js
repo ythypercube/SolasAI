@@ -5,6 +5,10 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+function normalizeText(text) {
+  return String(text || '').replace(/\s+/g, ' ').trim();
+}
+
 const RATE_LIMIT_WINDOW_MS = Number(process.env.RATE_LIMIT_WINDOW_MS || 60_000);
 const RATE_LIMIT_MAX_REQUESTS = Number(process.env.RATE_LIMIT_MAX_REQUESTS || 80);
 const MC_AGENT_RATE_LIMIT_WINDOW_MS = Number(process.env.MC_AGENT_RATE_LIMIT_WINDOW_MS || 10_000);
@@ -14,6 +18,23 @@ const PROVIDER = process.env.PROVIDER || 'local';
 const MODEL = process.env.MODEL || 'solas-default';
 const MAX_MESSAGE_LENGTH = Number(process.env.MAX_MESSAGE_LENGTH || 4000);
 const REQUIRE_API_KEY = String(process.env.REQUIRE_API_KEY || 'false').toLowerCase() === 'true';
+const ENABLE_CONTENT_FILTER = String(process.env.ENABLE_CONTENT_FILTER || 'false').toLowerCase() === 'true';
+const SHOW_REASONING_SUMMARY = String(process.env.SHOW_REASONING_SUMMARY || 'false').toLowerCase() === 'true';
+const REASONING_SUMMARY_MODE = process.env.REASONING_SUMMARY_MODE || 'compact';
+const WEB_SEARCH_ENABLED = String(process.env.WEB_SEARCH_ENABLED || 'true').toLowerCase() === 'true';
+const WEB_RESULT_LIMIT = Number(process.env.WEB_RESULT_LIMIT || 3);
+const WEB_CONTEXT_MAX_CHARS = Number(process.env.WEB_CONTEXT_MAX_CHARS || 2400);
+const REPLY_WRAP_CHARS = Number(process.env.REPLY_WRAP_CHARS || 120);
+const REPLY_WRAP_OVERFLOW = String(process.env.REPLY_WRAP_OVERFLOW || 'true').toLowerCase() === 'true';
+const SOLASGPT_FORWARD_MAX_CHARS = Number(process.env.SOLASGPT_FORWARD_MAX_CHARS || 7000);
+const UPSTREAM_FALLBACK_ENABLED = String(process.env.UPSTREAM_FALLBACK_ENABLED || 'true').toLowerCase() === 'true';
+const API_KEYS = String(process.env.API_KEYS || '')
+  .split(',')
+  .map((value) => normalizeText(value))
+  .filter(Boolean);
+
+const rateLimits = new Map();
+const mcAgentRateLimits = new Map();
 
 const app = express();
 app.use(cors());
