@@ -14,6 +14,7 @@ const RATE_LIMIT_MAX_REQUESTS = Number(process.env.RATE_LIMIT_MAX_REQUESTS || 80
 const MC_AGENT_RATE_LIMIT_WINDOW_MS = Number(process.env.MC_AGENT_RATE_LIMIT_WINDOW_MS || 10_000);
 const MC_AGENT_RATE_LIMIT_MAX_REQUESTS = Number(process.env.MC_AGENT_RATE_LIMIT_MAX_REQUESTS || 120);
 const PORT = Number(process.env.PORT || 8787);
+const HOST = process.env.HOST || '0.0.0.0';
 const PROVIDER = process.env.PROVIDER || 'local';
 const MODEL = process.env.MODEL || 'solas-default';
 const MAX_MESSAGE_LENGTH = Number(process.env.MAX_MESSAGE_LENGTH || 4000);
@@ -28,6 +29,9 @@ const REPLY_WRAP_CHARS = Number(process.env.REPLY_WRAP_CHARS || 120);
 const REPLY_WRAP_OVERFLOW = String(process.env.REPLY_WRAP_OVERFLOW || 'true').toLowerCase() === 'true';
 const SOLASGPT_FORWARD_MAX_CHARS = Number(process.env.SOLASGPT_FORWARD_MAX_CHARS || 7000);
 const UPSTREAM_FALLBACK_ENABLED = String(process.env.UPSTREAM_FALLBACK_ENABLED || 'true').toLowerCase() === 'true';
+const GENERATED_IMAGE_SIZE = normalizeText(process.env.GENERATED_IMAGE_SIZE || '640x640') || '640x640';
+const PHRASING_KNOWLEDGE_ENABLED = String(process.env.PHRASING_KNOWLEDGE_ENABLED || 'true').toLowerCase() === 'true';
+const PHRASING_FALLBACK_ON_LOW_QUALITY = String(process.env.PHRASING_FALLBACK_ON_LOW_QUALITY || 'true').toLowerCase() === 'true';
 const API_KEYS = String(process.env.API_KEYS || '')
   .split(',')
   .map((value) => normalizeText(value))
@@ -4079,12 +4083,21 @@ app.post('/mc-feedback', checkApiKey, checkRateLimit, (req, res) => {
   }
 });
 
-app.listen(PORT, () => {
-  console.log(`TurboWarp AI backend running on http://localhost:${PORT}`);
+const httpServer = app.listen(PORT, HOST, () => {
+  console.log(`TurboWarp AI backend running on http://${HOST}:${PORT}`);
   console.log(`Provider=${PROVIDER} Model=${MODEL}`);
   console.log(`MaxMessageLength=${MAX_MESSAGE_LENGTH}`);
   console.log(`RateLimit=${RATE_LIMIT_MAX_REQUESTS} per ${RATE_LIMIT_WINDOW_MS}ms`);
   console.log(`ApiKeyRequired=${REQUIRE_API_KEY}`);
+});
+
+httpServer.on('error', (error) => {
+  console.error('[startup] failed to bind HTTP server', {
+    host: HOST,
+    port: PORT,
+    message: error instanceof Error ? error.message : String(error)
+  });
+  process.exit(1);
 });
 function generateHelpfulDirectAnswer(userMessage, webContext) {
   const text = normalizeText(userMessage).toLowerCase();
