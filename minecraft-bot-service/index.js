@@ -3682,10 +3682,27 @@ wireBotEvents = function wireBotEvents(bot) {
 
   bot.on('error', (err) => {
     const msg = normalizeText(err?.message || String(err || 'unknown bot error'));
+    const code = normalizeText(err?.code || '');
     console.error('[bot-service] bot error:', msg);
     state.lastConnectError = msg;
+    if (!state.lastDisconnectReason) {
+      state.lastDisconnectReason = code || 'socket error';
+    }
     if (!state.connected) {
       state.connecting = false;
+    }
+
+    // Some network failures (ECONNRESET/ETIMEDOUT/ECONNREFUSED) may emit only
+    // 'error' without a later 'end'. Ensure state is cleaned up immediately.
+    if (['ECONNRESET', 'ETIMEDOUT', 'ECONNREFUSED', 'EPIPE'].includes(code)) {
+      clearConnectTimeout();
+      state.connecting = false;
+      state.connected = false;
+      if (state.bot === bot) {
+        state.bot = null;
+        state.movements = null;
+      }
+      stopDecisionLoop();
     }
   });
 
