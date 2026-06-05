@@ -1,0 +1,16 @@
+services:
+  - type: web
+    name: solasai-bot-service
+    env: node
+    plan: standard
+    buildCommand: npm install
+    startCommand: node index.js
+    envVars:
+      - key: BOT_SERVICE_PORT
+        value: 8789
+      - key: MC_AGENT_URL
+        value: https://solasai-backend.onrender.com/mc-agent
+      - key: DEFAULT_BOT_USERNAME
+        value: SolasAIBot
+      - key: DEFAULT_BOT_AUTH
+        value: offline
