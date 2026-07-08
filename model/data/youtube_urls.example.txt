@@ -1,0 +1,14 @@
+# Add one Minecraft YouTube video URL per line.
+# Use videos you are allowed to learn from and prefer videos that already have
+# English captions or auto-generated subtitles enabled.
+#
+# Example usage:
+#   python build_youtube_dataset.py --urls-file data/youtube_urls.example.txt --merge
+#   python build_youtube_dataset.py --urls-file data/youtube_urls.example.txt --proxy http://user:pass@host:port --merge
+#
+# If YouTube blocks requests from your current IP, pass --proxy (and optionally
+# --proxy-https) or set SOLASAI_YOUTUBE_PROXY.
+
+https://www.youtube.com/watch?v=CzNqlkAP-AQ
+https://www.youtube.com/watch?v=FwrlD04OQeA
+https://www.youtube.com/watch?v=YozYFGwZjJM

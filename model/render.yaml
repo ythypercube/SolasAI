@@ -1,0 +1,21 @@
+services:
+  - type: web
+    name: solasai-database
+    env: python
+    rootDir: model
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: python inference_server.py
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.3
+      - key: PORT
+        value: 8788
+      - key: HOST
+        value: 0.0.0.0
+      - key: USE_EMBEDDINGS
+        value: true
+      - key: EMBEDDING_MODEL_NAME
+        value: all-MiniLM-L6-v2

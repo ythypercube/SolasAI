@@ -1,0 +1,23 @@
+# Minecraft YouTube channels - auto-discovered captioned videos
+# Channels: ilmango, Grian, Pixlriffs, IntelEdits, Technoblade, fWhip, TrixyBlox
+
+# ilmango - technical farms & mechanics
+https://www.youtube.com/watch?v=eLEtwdAXtwc
+
+# Grian - building tutorials
+https://www.youtube.com/watch?v=h1UDrS8e-18
+
+# Pixlriffs - survival guide
+https://www.youtube.com/watch?v=s7VLUk9GBq0
+
+# IntelEdits - crystal PvP / movement guides
+https://www.youtube.com/watch?v=RlBLfDK4MO0
+
+# Technoblade - PvP strategy & SMP
+https://www.youtube.com/watch?v=k-DCrmQNkAA
+
+# fWhip - survival building + farms
+https://www.youtube.com/watch?v=iJ62rcQ07TI
+
+# TrixyBlox - mega builds
+https://www.youtube.com/watch?v=p7DOH-JcE7g
