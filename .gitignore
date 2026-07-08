@@ -1,0 +1,65 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+.venv/
+venv/
+ENV/
+env/
+*.egg-info/
+dist/
+build/
+
+# Model checkpoints
+*.pt
+*.pth
+*.ckpt
+*.old
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Logs
+*.log
+backend.log
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Gradle
+.gradle/
+build/
+*.jar
+!gradle-wrapper.jar
+
+# Node
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Minecraft
+libraries/
+versions/
+MinecraftServer/
+run/
+
+# Data files
+*.json
+!package.json
+!package-lock.json
+!tsconfig.json
+!render.yaml
+!settings.json
+
+# Temporary
+*.tmp
+*.temp
+cache/

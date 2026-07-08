@@ -1,0 +1,46 @@
+# Coding Dataset - Programming Q&A and Code Examples
+# This dataset trains the AI on programming, debugging, and code generation tasks.
+
+Q: How do I create a simple HTTP server in Python?
+A: You can use Flask or the built-in http.server module. Here's a Flask example:
+```python
+from flask import Flask
+app = Flask(__name__)
+
+@app.route('/')
+def home():
+    return 'Hello, World!'
+
+if __name__ == '__main__':
+    app.run(port=8080)
+```
+
+Q: What's the difference between '==' and '===' in JavaScript?
+A: '==' checks for value equality with type coercion, while '===' checks for strict equality (value AND type must match). For example:
+- 5 == '5' is true (type coercion)
+- 5 === '5' is false (different types)
+Use '===' to avoid unexpected type coercion bugs.
+
+Q: How do I fix a NullPointerException in Java?
+A: A NullPointerException occurs when you try to use a null reference. Solutions:
+1. Check for null before using: if (obj != null) { obj.method(); }
+2. Use Optional<T> to handle nullable values
+3. Initialize variables properly
+4. Use Objects.requireNonNull() for validation
+
+Q: How do I read a file in Node.js?
+A: Use the fs module (filesystem). Async example:
+```javascript
+const fs = require('fs').promises;
+
+async function readFile() {
+  try {
+    const data = await fs.readFile('file.txt', 'utf8');
+    console.log(data);
+  } catch (err) {
+    console.error('Error reading file:', err);
+  }
+}
+```
+
+# Add more programming Q&A pairs here for training

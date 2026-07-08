@@ -1,0 +1,16 @@
+{
+  "name": "litematic-build-service",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "adm-zip": "^0.5.16",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "prismarine-nbt": "^2.7.0"
+  }
+}

@@ -1,0 +1,170 @@
+
+ ╔═══════════════════════════════════════════════════════════════════════╗
+ ║                      SolasAI Unified Architecture                     ║
+ ║                  One AI • Three Specialized Datasets                  ║
+ ╚═══════════════════════════════════════════════════════════════════════╝
+
+ PROJECT ROOT: /mnt/data/Projects/SolasAI/
+ 
+ ┌─────────────────────────────────────────────────────────────────────┐
+ │ 🚀 QUICK LAUNCHERS                                                  │
+ ├─────────────────────────────────────────────────────────────────────┤
+ │  start-chat-server.sh      Launch inference API (port 8788)         │
+ │  train-ai.sh               Train model on dataset                   │
+ │  README.md                 Main documentation                        │
+ │  QUICKREF.txt              Quick reference card                      │
+ └─────────────────────────────────────────────────────────────────────┘
+
+ ┌─────────────────────────────────────────────────────────────────────┐
+ │ 🧠 AI-CORE - Unified Intelligence System                            │
+ └─────────────────────────────────────────────────────────────────────┘
+     │
+     ├─── 📊 datasets/           Specialized training data
+     │    ├─── conversation/     💬 Chat, dialogue, Q&A
+     │    │    ├─ general_chat.txt
+     │    │    ├─ expanded_dialogue.txt
+     │    │    └─ chat_history.jsonl
+     │    │
+     │    ├─── coding/           💻 Programming, debugging
+     │    │    ├─ code_examples.txt
+     │    │    └─ autofix_examples.txt
+     │    │
+     │    └─── minecraft/        ⛏️  Game mechanics, bot AI
+     │         ├─ gameplay_knowledge.txt
+     │         ├─ youtube_tutorials.txt
+     │         └─ player_behavior.json
+     │
+     ├─── 🏗️  models/             Model architecture
+     │    ├─ solas_gpt.py         Transformer implementation
+     │    └─ model_checkpoint.pt  Trained weights
+     │
+     ├─── 🎓 training/            Training system
+     │    └─ train_model.py       Multi-dataset trainer
+     │
+     ├─── 🌐 inference/           Inference & API
+     │    └─ chat_server.py       HTTP API server
+     │
+     ├─── 📄 README.md            Architecture docs
+     ├─── 📄 DATASETS.md          Dataset guide
+     ├─── 📋 requirements.txt     Dependencies
+     └─── ⚙️  render.yaml          Deployment config
+
+
+ ┌─────────────────────────────────────────────────────────────────────┐
+ │ 🎯 TRAINING WORKFLOW                                                 │
+ └─────────────────────────────────────────────────────────────────────┘
+
+     Choose Dataset
+          │
+    ┌─────┼─────┬─────────┬───────────┐
+    ▼     ▼     ▼         ▼           ▼
+  💬conv 💻code ⛏️mine   🌐all     custom
+    │     │     │         │           │
+    └─────┴─────┴─────────┴───────────┘
+                  │
+                  ▼
+          train_model.py --dataset [choice]
+                  │
+                  ├─► Load dataset files
+                  ├─► Build vocabulary
+                  ├─► Train transformer
+                  ├─► Validate performance
+                  └─► Save checkpoint
+                          │
+                          ▼
+              model_checkpoint.pt saved!
+
+
+ ┌─────────────────────────────────────────────────────────────────────┐
+ │ 🌐 INFERENCE WORKFLOW                                                │
+ └─────────────────────────────────────────────────────────────────────┘
+
+     Start Server
+          │
+          ▼
+   chat_server.py (port 8788)
+          │
+          ├─► Load model checkpoint
+          ├─► Initialize vocab
+          └─► Start Flask API
+                  │
+                  ▼
+     ┌────────────────────────┐
+     │  HTTP Endpoints         │
+     ├─────────────────────────┤
+     │  POST /chat             │ ← Send message
+     │  GET  /health           │ ← Health check
+     │  GET  /status           │ ← Server info
+     └─────────────────────────┘
+                  │
+                  ▼
+           Generate response
+                  │
+                  └─► Return JSON
+
+
+ ┌─────────────────────────────────────────────────────────────────────┐
+ │ 🔄 DATASET SELECTION                                                 │
+ └─────────────────────────────────────────────────────────────────────┘
+
+   ./train-ai.sh conversation    →  Chatbot specialist
+                                    Best for: Dialogue, Q&A
+   
+   ./train-ai.sh coding         →  Code assistant
+                                    Best for: Programming help
+   
+   ./train-ai.sh minecraft      →  Game bot specialist
+                                    Best for: Minecraft AI
+   
+   ./train-ai.sh all            →  General purpose (RECOMMENDED)
+                                    Best for: Production use
+
+
+ ┌─────────────────────────────────────────────────────────────────────┐
+ │ 📦 INTEGRATION POINTS                                                │
+ └─────────────────────────────────────────────────────────────────────┘
+
+   minecraft-bot-service/
+       ↓
+   Uses chat_server.py → Decision making for bot
+       ↓
+   minecraft trained dataset provides context
+   
+   turbowarp-ai-backend/
+       ↓
+   Uses chat_server.py → Block coding assistance
+       ↓
+   coding trained dataset provides examples
+
+
+ ┌─────────────────────────────────────────────────────────────────────┐
+ │ ⚠️  OLD STRUCTURE (DEPRECATED)                                       │
+ └─────────────────────────────────────────────────────────────────────┘
+
+   ❌ SolasAI/model/          → Use ai-core/ instead
+   ❌ model/                  → Use ai-core/ instead
+   ❌ training_data/          → Use ai-core/datasets/ instead
+   
+   See DEPRECATED.md files in each folder for details
+
+
+ ┌─────────────────────────────────────────────────────────────────────┐
+ │ ✅ VERIFICATION CHECKLIST                                            │
+ └─────────────────────────────────────────────────────────────────────┘
+
+   [✓] Single unified ai-core/ folder
+   [✓] Three specialized datasets organized
+   [✓] Better file names (solas_gpt.py, chat_server.py, etc)
+   [✓] Easy launcher scripts
+   [✓] Multi-dataset training support
+   [✓] Updated import paths
+   [✓] Comprehensive documentation
+   [✓] Deprecation notices
+   [✓] Python syntax validated
+
+
+ ╔═══════════════════════════════════════════════════════════════════════╗
+ ║  Status: ✅ CONSOLIDATION COMPLETE                                    ║
+ ║  Architecture: One AI, Three Datasets, Clean Organization            ║
+ ╚═══════════════════════════════════════════════════════════════════════╝
+
