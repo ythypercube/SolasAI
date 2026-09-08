@@ -2871,7 +2871,7 @@ function getClientIp(req) {
   }
   return req.ip || req.socket?.remoteAddress || 'unknown';
 }
-
+const MAX_SESSION_ID_LENGTH = 128;
 function validateSessionId(sessionId) {
   if (!sessionId) {
     return 'sessionId is required';

@@ -181,7 +181,7 @@ API_KEYS=replace-with-long-random-key
 
 # input validation
 MAX_MESSAGE_LENGTH=500
-MAX_SESSION_ID_LENGTH=64
+MAX_SESSION_ID_LENGTH=128
 
 # per-IP anti-spam
 RATE_LIMIT_WINDOW_MS=60000
