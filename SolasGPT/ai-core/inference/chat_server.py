@@ -37,14 +37,14 @@ stoi: dict = {}
 itos: dict = {}
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 CHECKPOINT = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'models', 'model_checkpoint.pt')
-DATASET = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'datasets', 'conversation', 'general_chat.txt')
+DATASETS_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'datasets')
 FEEDBACK_LOG = os.getenv(
     'FEEDBACK_LOG_PATH',
     os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'datasets', 'conversation', 'feedback_log.jsonl')
 )
 sessions: dict[str, list[str]] = {}   # short-term history per session
 HISTORY_TURNS = 8
-knowledge_pairs: list[tuple[str, str]] = []
+knowledge_pairs: list[tuple[str, str, str]] = []  # (question, answer, context_marker)
 embedding_model = None
 embedding_model_name = os.getenv('EMBEDDING_MODEL_NAME', 'all-MiniLM-L6-v2')
 embedding_enabled = os.getenv('USE_EMBEDDINGS', 'true').lower() == 'true'
@@ -77,19 +77,44 @@ def normalize_message(text: str) -> str:
 
 
 def load_knowledge_pairs() -> list[tuple[str, str]]:
-    if not os.path.exists(DATASET):
+    """Load Q&A pairs from all dataset files (conversation, minecraft, coding)."""
+    if not os.path.exists(DATASETS_DIR):
         return []
 
-    pairs: list[tuple[str, str]] = []
-    pending_user = None
-    with open(DATASET, 'r', encoding='utf-8') as handle:
-        for raw_line in handle:
-            line = raw_line.strip()
-            if line.startswith('User: '):
-                pending_user = line[6:].strip()
-            elif line.startswith('Assistant: ') and pending_user:
-                pairs.append((pending_user, line[11:].strip()))
-                pending_user = None
+    pairs: list[tuple[str, str, str]] = []  # (question, answer, context_marker)
+    
+    # Scan all subdirectories for .txt files
+    for subdir in ['conversation', 'minecraft', 'coding']:
+        subdir_path = os.path.join(DATASETS_DIR, subdir)
+        if not os.path.exists(subdir_path):
+            continue
+            
+        for filename in os.listdir(subdir_path):
+            if not filename.endswith('.txt') or filename == 'feedback_log.jsonl':
+                continue
+                
+            filepath = os.path.join(subdir_path, filename)
+            pending_user = None
+            pending_context = '[CHAT]'  # default
+            
+            with open(filepath, 'r', encoding='utf-8') as handle:
+                for raw_line in handle:
+                    line = raw_line.strip()
+                    # Match context markers like [CHAT] User:, [MINECRAFT] User:, or plain User:
+                    if ' User: ' in line or line.startswith('User: '):
+                        # Extract context marker if present
+                        if line.startswith('['):
+                            end_bracket = line.find(']')
+                            if end_bracket > 0:
+                                pending_context = line[:end_bracket + 1]
+                        user_idx = line.find('User: ')
+                        if user_idx >= 0:
+                            pending_user = line[user_idx + 6:].strip()
+                    elif line.startswith('Assistant: ') and pending_user:
+                        pairs.append((pending_user, line[11:].strip(), pending_context))
+                        pending_user = None
+                        pending_context = '[CHAT]'
+    
     return pairs
 
 
@@ -100,10 +125,10 @@ def tokenize_for_vector(text: str) -> list[str]:
     return filtered or tokens
 
 
-def build_vector_index(pairs: list[tuple[str, str]]):
+def build_vector_index(pairs: list[tuple[str, str, str]]):
     global knowledge_question_tokens, knowledge_idf, knowledge_vectors, knowledge_norms
 
-    questions = [question for question, _ in pairs]
+    questions = [question for question, _, _ in pairs]
     knowledge_question_tokens = [tokenize_for_vector(question) for question in questions]
 
     doc_count = max(1, len(knowledge_question_tokens))
@@ -151,14 +176,14 @@ def load_embedding_model():
         return None
 
 
-def build_embedding_index(pairs: list[tuple[str, str]]):
+def build_embedding_index(pairs: list[tuple[str, str, str]]):
     global knowledge_embeddings
     model_instance = load_embedding_model()
     if model_instance is None or not pairs:
         knowledge_embeddings = None
         return
 
-    questions = [question for question, _ in pairs]
+    questions = [question for question, _, _ in pairs]
     knowledge_embeddings = model_instance.encode(
         questions,
         convert_to_tensor=True,
@@ -411,12 +436,17 @@ def retrieval_reply(user_message: str, history: list[str]) -> tuple[str | None, 
     if not query or not knowledge_pairs:
         return None, 0.0
 
+    # Detect context to filter relevant Q&A pairs
+    expected_context = detect_context(user_message)
+    
     context_text = normalize_message(' '.join(history[-4:]))
 
     embed_index, embed_score = embedding_similarity(user_message, context_text)
     if embed_index is not None:
-        question, answer = knowledge_pairs[embed_index]
-        return answer, max(0.0, min(embed_score, 1.0))
+        question, answer, pair_context = knowledge_pairs[embed_index]
+        # Only return if context matches
+        if pair_context == expected_context:
+            return answer, max(0.0, min(embed_score, 1.0))
 
     if not knowledge_vectors:
         return None, 0.0
@@ -428,7 +458,11 @@ def retrieval_reply(user_message: str, history: list[str]) -> tuple[str | None, 
 
     best_answer = None
     best_score = 0.0
-    for index, (question, answer) in enumerate(knowledge_pairs):
+    for index, (question, answer, pair_context) in enumerate(knowledge_pairs):
+        # Only consider pairs with matching context
+        if pair_context != expected_context:
+            continue
+            
         question_vector = knowledge_vectors[index]
         question_norm = knowledge_norms[index]
         score = cosine_similarity_sparse(query_vector, query_norm, question_vector, question_norm)
@@ -572,31 +606,61 @@ def answer_message(user_message: str, history: list[str]) -> str:
         return clean_reply(rule)
 
     best_answer, score = retrieval_reply(user_message, history)
-    # Prefer grounded retrieval more aggressively to avoid noisy free-generation.
-    if best_answer and score >= 0.64:
+    # Significantly reduced thresholds to prefer context-aware model generation
+    # Only use retrieval for very high confidence matches
+    if best_answer and score >= 0.85:
         return clean_reply(best_answer)
 
-    question_like = bool(re.search(r"\b(what|who|when|where|why|how|explain|define|capital|convert|difference|compare)\b", normalize_message(user_message)))
-    if best_answer and question_like and score >= 0.52:
-        return clean_reply(best_answer)
-
+    # Generate with context markers (prioritize model over retrieval)
     prompt = build_prompt(history, user_message)
     reply = generate_reply(prompt, max_new_tokens=120, temperature=0.45, top_k=16)
 
     low_quality, _ = is_low_quality_reply(reply)
-    if (looks_bad(reply) or low_quality) and best_answer and score >= 0.34:
+    # Use retrieval as fallback only when generation fails badly
+    if (looks_bad(reply) or low_quality) and best_answer and score >= 0.70:
         return clean_reply(best_answer)
-    if looks_bad(reply) and best_answer and score >= 0.42:
+    if looks_bad(reply) and best_answer and score >= 0.60:
         return clean_reply(best_answer)
     if looks_bad(reply):
         return assume_high_probability_reply(user_message, best_answer)
     return clean_reply(reply)
 
 
+def detect_context(user_message: str) -> str:
+    """Detect if the message is about coding, Minecraft, or general chat."""
+    msg_lower = user_message.lower()
+    
+    # Code-related keywords
+    code_keywords = [
+        'python', 'code', 'function', 'loop', 'variable', 'class', 'program',
+        'error', 'debug', 'syntax', 'import', 'def', 'return', 'if', 'for', 'while',
+        'list', 'dict', 'string', 'int', 'array', 'algorithm', 'script', 'programming'
+    ]
+    
+    # Minecraft-related keywords
+    minecraft_keywords = [
+        'minecraft', 'diamond', 'craft', 'mine', 'block', 'mob', 'creeper',
+        'ender', 'dragon', 'farm', 'redstone', 'pickaxe', 'ore', 'spawn',
+        'biome', 'nether', 'village', 'enchant', 'potion', 'build', 'survival'
+    ]
+    
+    # Check for code patterns
+    if any(keyword in msg_lower for keyword in code_keywords):
+        return '[CODE]'
+    
+    # Check for Minecraft patterns
+    if any(keyword in msg_lower for keyword in minecraft_keywords):
+        return '[MINECRAFT]'
+    
+    # Default to chat
+    return '[CHAT]'
+
+
 def build_prompt(history: list[str], user_message: str) -> str:
+    context = detect_context(user_message)
     lines = history[-(HISTORY_TURNS * 2):]
     lines.append('System: Give a clear answer with helpful detail. When useful, include a short explanation or a few steps.')
-    lines.append(f"User: {user_message}")
+    lines.append(f"{context} User: {user_message}")
     lines.append("Assistant:")
     return '\n'.join(lines) + ''
 

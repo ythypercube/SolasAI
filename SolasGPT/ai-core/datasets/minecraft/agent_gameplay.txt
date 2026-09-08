@@ -1,0 +1,161 @@
+[MINECRAFT] User: get mending, protection 4, unbreaking 3, sharpness 5, looting 3, efficiency 5, netherite upgrade and all other enchantin
+Agent: move forward, use item
+
+[MINECRAFT] User: collect 33 diamonds from nearby caves. if you find animals or food, cook it and eat it
+Agent: move forward, sneak, use item
+
+[MINECRAFT] User: find a cave, get 33 diamonds. kill mobs using the iron sword. if you are low on hp then block yourself in a wall
+Agent: move forward
+
+[CHAT] User: pvp
+Agent: move forward, strafe right, sprint, attack
+
+[MINECRAFT] User: 1. find a cave. get 33 diamonds. use the axe to kill mobs. eat food to heal. get food from animals
+Agent: move forward, strafe left, sprint, attack
+
+[CHAT] User: hit the other player into the big hole, then fall into the small hole and take the loot
+Agent: move forward
+
+[CHAT] User: kill the other player
+Agent: move forward, strafe left, sprint
+
+[CHAT] User: kill the other player
+Agent: move forward, move back, sprint
+
+[CHAT] User: general1
+Agent: move forward
+
+[CHAT] User: general1
+Agent: move forward, sneak
+
+[CHAT] User: general1
+Agent: use item
+
+[CHAT] User: kill the other player
+Agent: move back
+
+[CHAT] User: g1
+Agent: move forward, sprint
+
+[CHAT] User: kill the other player
+Agent: move forward, sprint, attack
+
+[CHAT] User: kill the other player by macing him (launch yourself with wind charge and mace)
+Agent: move forward
+
+[CHAT] User: kill the other player
+Agent: attack
+
+[CHAT] User: kill the other player
+Agent: move forward, sprint, sneak, attack
+
+[CHAT] User: g1
+Agent: move forward, sprint
+
+[CHAT] User: kill the other player
+Agent: move forward, sprint
+
+[CHAT] User: kill the nearby player
+Agent: move forward, sprint
+
+[CHAT] User: kill the other player
+Agent: move forward, sprint
+
+[CHAT] User: kill the other person
+Agent: move forward, sprint
+
+[CHAT] User: kill the other person
+Agent: move forward, sprint
+
+[CHAT] User: build a box using wool
+Agent: move forward
+
+[CHAT] User: g1
+Agent: move back, jump
+
+[CHAT] User: get to 4360 3468 without dying
+Agent: move back
+
+[CHAT] User: can you fly to 4360 3468 but land safely without dying
+Agent: move forward
+
+[CHAT] User: kill the iron golems
+Agent: move forward, sprint
+
+[CHAT] User: kill the iron golem
+Agent: move forward
+
+[CHAT] User: kill the mannequin
+Agent: move forward
+
+[CHAT] User: kill nearest entity
+Agent: move forward
+
+[MINECRAFT] User: kill the zombies
+Agent: move back, use item
+
+[MINECRAFT] User: kill the zombies
+Agent: move forward
+
+[MINECRAFT] User: collect diamonds and mine efficiently
+Agent: move forward, attack
+
+[CHAT] User: general1
+Agent: move forward, jump, sprint
+
+[CHAT] User: general1
+Agent: move forward, jump, sprint
+
+[MINECRAFT] User: tell me the coordinates of the nearest water block
+Agent: move forward, attack, use item
+
+[CHAT] User: sss
+Agent: move forward
+
+[CHAT] User: general1
+Agent: move forward, move back, jump, sprint, sneak
+
+[CHAT] User: general1
+Agent: move forward, jump, sprint
+
+[CHAT] User: g1
+Agent: move forward, sprint
+
+[CHAT] User: kill andygamezmc
+Agent: move forward
+
+[CHAT] User: kill horse
+Agent: sneak
+
+[CHAT] User: kill the horse
+Agent: move forward
+
+[CHAT] User: collect wood
+Agent: move forward, look for trees, break log blocks
+
+[MINECRAFT] User: mine stone
+Agent: equip pickaxe, move forward, break stone blocks
+
+[CHAT] User: attack enemy
+Agent: equip sword, move forward, attack, strafe left
+
+[CHAT] User: build shelter
+Agent: equip blocks, place block, move back, place block
+
+[MINECRAFT] User: find diamonds
+Agent: mine down to Y=11, branch mine, break diamond ore
+
+[MINECRAFT] User: farm crops
+Agent: use hoe on dirt, plant seeds, wait, harvest crops
+
+[MINECRAFT] User: explore cave
+Agent: place torches, move forward carefully, mine ores
+
+[MINECRAFT] User: fight zombie
+Agent: equip sword, sprint forward, attack, back away, attack
+
+[MINECRAFT] User: cook food
+Agent: place furnace, use furnace, add fuel, wait for cooking
+
+[MINECRAFT] User: craft tools
+Agent: open crafting table, select recipe, craft item

@@ -1,0 +1,7111 @@
+[CODE] # Python: Dictionaries
+person = {
+    "name": "Bob",
+    "age": 30,
+    "city": "New York"
+}
+print(person["name"])
+
+
+[CODE] # Python: For loop
+for i in range(5):
+    print(f"Count: {i}")
+
+
+[CODE] # Python: Variables and types
+name = "Alice"
+age = 25
+height = 5.6
+is_student = True
+
+
+[CODE] # Python: Variables and types
+name = "Alice"
+age = 25
+height = 5.6
+is_student = True
+
+
+[CODE] # Python: Dictionaries
+person = {
+    "name": "Bob",
+    "age": 30,
+    "city": "New York"
+}
+print(person["name"])
+
+
+[CODE] # Python: File reading
+with open('file.txt', 'r') as f:
+    content = f.read()
+    print(content)
+
+
+[CODE] # Python: Print Hello World
+print("Hello, World!")
+
+
+[CODE] # Python: For loop
+for i in range(5):
+    print(f"Count: {i}")
+
+
+[CODE] # Python: List comprehension
+numbers = [1, 2, 3, 4, 5]
+squared = [x**2 for x in numbers]
+print(squared)
+
+
+[CODE] # Python: Dictionaries
+person = {
+    "name": "Bob",
+    "age": 30,
+    "city": "New York"
+}
+print(person["name"])
+
+
+[CODE] # Python: Function
+def add_numbers(a, b):
+    return a + b
+
+result = add_numbers(5, 3)
+print(result)
+
+
+[CODE] # Python: Dictionaries
+person = {
+    "name": "Bob",
+    "age": 30,
+    "city": "New York"
+}
+print(person["name"])
+
+
+[CODE] # Python: Lists
+fruits = ["apple", "banana", "cherry"]
+fruits.append("orange")
+print(fruits[0])
+print(len(fruits))
+
+
+[CODE] # Python: Function
+def add_numbers(a, b):
+    return a + b
+
+result = add_numbers(5, 3)
+print(result)
+
+
+[CODE] # Python: Class
+class Dog:
+    def __init__(self, name):
+        self.name = name
+    
+    def bark(self):
+        print(f"{self.name} says Woof!")
+
+my_dog = Dog("Buddy")
+my_dog.bark()
+
+
+[CODE] # Python: Class
+class Dog:
+    def __init__(self, name):
+        self.name = name
+    
+    def bark(self):
+        print(f"{self.name} says Woof!")
+
+my_dog = Dog("Buddy")
+my_dog.bark()
+
+
+[CODE] # Python: Class
+class Dog:
+    def __init__(self, name):
+        self.name = name
+    
+    def bark(self):
+        print(f"{self.name} says Woof!")
+
+my_dog = Dog("Buddy")
+my_dog.bark()
+
+
+[CODE] # Python: Function
+def add_numbers(a, b):
+    return a + b
+
+result = add_numbers(5, 3)
+print(result)
+
+
+[CODE] # Python: Function
+def add_numbers(a, b):
+    return a + b
+
+result = add_numbers(5, 3)
+print(result)
+
+
+[CODE] # Python: Print Hello World
+print("Hello, World!")
+
+
+[CODE] # Python: Class
+class Dog:
+    def __init__(self, name):
+        self.name = name
+    
+    def bark(self):
+        print(f"{self.name} says Woof!")
+
+my_dog = Dog("Buddy")
+my_dog.bark()
+
+
+[CODE] # Python: File reading
+with open('file.txt', 'r') as f:
+    content = f.read()
+    print(content)
+
+
+[CODE] # Python: List comprehension
+numbers = [1, 2, 3, 4, 5]
+squared = [x**2 for x in numbers]
+print(squared)
+
+
+[CODE] # Python: For loop
+for i in range(5):
+    print(f"Count: {i}")
+
+
+[CODE] # Python: For loop
+for i in range(5):
+    print(f"Count: {i}")
+
+
+[CODE] # Python: Lists
+fruits = ["apple", "banana", "cherry"]
+fruits.append("orange")
+print(fruits[0])
+print(len(fruits))
+
+
+[CODE] # Python: Variables and types
+name = "Alice"
+age = 25
+height = 5.6
+is_student = True
+
+
+[CODE] # Python: Dictionaries
+person = {
+    "name": "Bob",
+    "age": 30,
+    "city": "New York"
+}
+print(person["name"])
+
+
+[CODE] # Python: List comprehension
+numbers = [1, 2, 3, 4, 5]
+squared = [x**2 for x in numbers]
+print(squared)
+
+
+[CODE] # Python: While loop
+count = 0
+while count < 5:
+    print(count)
+    count += 1
+
+
+[CODE] # Python: Dictionaries
+person = {
+    "name": "Bob",
+    "age": 30,
+    "city": "New York"
+}
+print(person["name"])
+
+
+[CODE] # Python: Class
+class Dog:
+    def __init__(self, name):
+        self.name = name
+    
+    def bark(self):
+        print(f"{self.name} says Woof!")
+
+my_dog = Dog("Buddy")
+my_dog.bark()
+
+
+[CODE] # Python: Print Hello World
+print("Hello, World!")
+
+
+[CODE] # Python: While loop
+count = 0
+while count < 5:
+    print(count)
+    count += 1
+
+
+[CODE] # Python: File reading
+with open('file.txt', 'r') as f:
+    content = f.read()
+    print(content)
+
+
+[CODE] # Python: File reading
+with open('file.txt', 'r') as f:
+    content = f.read()
+    print(content)
+
+
+[CODE] # Python: Dictionaries
+person = {
+    "name": "Bob",
+    "age": 30,
+    "city": "New York"
+}
+print(person["name"])
+
+
+[CODE] # Python: List comprehension
+numbers = [1, 2, 3, 4, 5]
+squared = [x**2 for x in numbers]
+print(squared)
+
+
+[CODE] # Python: File reading
+with open('file.txt', 'r') as f:
+    content = f.read()
+    print(content)
+
+
+[CODE] # Python: File reading
+with open('file.txt', 'r') as f:
+    content = f.read()
+    print(content)
+
+
+[CODE] # Python: File reading
+with open('file.txt', 'r') as f:
+    content = f.read()
+    print(content)
+
+
+[CODE] # Python: File reading
+with open('file.txt', 'r') as f:
+    content = f.read()
+    print(content)
+
+
+[CODE] # Python: Dictionaries
+person = {
+    "name": "Bob",
+    "age": 30,
+    "city": "New York"
+}
+print(person["name"])
+
+
+[CODE] # Python: Variables and types
+name = "Alice"
+age = 25
+height = 5.6
+is_student = True
+
+
+[CODE] # Python: For loop
+for i in range(5):
+    print(f"Count: {i}")
+
+
+[CODE] # Python: Function
+def add_numbers(a, b):
+    return a + b
+
+result = add_numbers(5, 3)
+print(result)
+
+
+[CODE] # Python: File reading
+with open('file.txt', 'r') as f:
+    content = f.read()
+    print(content)
+
+
+[CODE] # Python: Variables and types
+name = "Alice"
+age = 25
+height = 5.6
+is_student = True
+
+
+[CODE] # Python: Function
+def add_numbers(a, b):
+    return a + b
+
+result = add_numbers(5, 3)
+print(result)
+
+
+[CODE] # Python: Lists
+fruits = ["apple", "banana", "cherry"]
+fruits.append("orange")
+print(fruits[0])
+print(len(fruits))
+
+
+[CODE] # Python: Function
+def add_numbers(a, b):
+    return a + b
+
+result = add_numbers(5, 3)
+print(result)
+
+
+[CODE] # Python: For loop
+for i in range(5):
+    print(f"Count: {i}")
+
+
+[CODE] # Python: Lists
+fruits = ["apple", "banana", "cherry"]
+fruits.append("orange")
+print(fruits[0])
+print(len(fruits))
+
+
+[CODE] # Python: Dictionaries
+person = {
+    "name": "Bob",
+    "age": 30,
+    "city": "New York"
+}
+print(person["name"])
+
+
+[CODE] # Python: Print Hello World
+print("Hello, World!")
+
+
+[CODE] # Python: List comprehension
+numbers = [1, 2, 3, 4, 5]
+squared = [x**2 for x in numbers]
+print(squared)
+
+
+[CODE] # Python: While loop
+count = 0
+while count < 5:
+    print(count)
+    count += 1
+
+
+[CODE] # Python: Variables and types
+name = "Alice"
+age = 25
+height = 5.6
+is_student = True
+
+
+[CODE] # Python: While loop
+count = 0
+while count < 5:
+    print(count)
+    count += 1
+
+
+[CODE] # Python: While loop
+count = 0
+while count < 5:
+    print(count)
+    count += 1
+
+
+[CODE] # Python: Print Hello World
+print("Hello, World!")
+
+
+[CODE] # Python: Print Hello World
+print("Hello, World!")
+
+
+[CODE] # Python: For loop
+for i in range(5):
+    print(f"Count: {i}")
+
+
+[CODE] # Python: Class
+class Dog:
+    def __init__(self, name):
+        self.name = name
+    
+    def bark(self):
+        print(f"{self.name} says Woof!")
+
+my_dog = Dog("Buddy")
+my_dog.bark()
+
+
+[CODE] # Python: Class
+class Dog:
+    def __init__(self, name):
+        self.name = name
+    
+    def bark(self):
+        print(f"{self.name} says Woof!")
+
+my_dog = Dog("Buddy")
+my_dog.bark()
+
+
+[CODE] # Python: File reading
+with open('file.txt', 'r') as f:
+    content = f.read()
+    print(content)
+
+
+[CODE] # Python: Class
+class Dog:
+    def __init__(self, name):
+        self.name = name
+    
+    def bark(self):
+        print(f"{self.name} says Woof!")
+
+my_dog = Dog("Buddy")
+my_dog.bark()
+
+
+[CODE] # Python: List comprehension
+numbers = [1, 2, 3, 4, 5]
+squared = [x**2 for x in numbers]
+print(squared)
+
+
+[CODE] # Python: List comprehension
+numbers = [1, 2, 3, 4, 5]
+squared = [x**2 for x in numbers]
+print(squared)
+
+
+[CODE] # Python: While loop
+count = 0
+while count < 5:
+    print(count)
+    count += 1
+
+
+[CODE] # Python: Function
+def add_numbers(a, b):
+    return a + b
+
+result = add_numbers(5, 3)
+print(result)
+
+
+[CODE] # Python: File reading
+with open('file.txt', 'r') as f:
+    content = f.read()
+    print(content)
+
+
+[CODE] # Python: Variables and types
+name = "Alice"
+age = 25
+height = 5.6
+is_student = True
+
+
+[CODE] # Python: List comprehension
+numbers = [1, 2, 3, 4, 5]
+squared = [x**2 for x in numbers]
+print(squared)
+
+
+[CODE] # Python: Function
+def add_numbers(a, b):
+    return a + b
+
+result = add_numbers(5, 3)
+print(result)
+
+
+[CODE] # Python: For loop
+for i in range(5):
+    print(f"Count: {i}")
+
+
+[CODE] # Python: Lists
+fruits = ["apple", "banana", "cherry"]
+fruits.append("orange")
+print(fruits[0])
+print(len(fruits))
+
+
+[CODE] # Python: While loop
+count = 0
+while count < 5:
+    print(count)
+    count += 1
+
+
+[CODE] # Python: File reading
+with open('file.txt', 'r') as f:
+    content = f.read()
+    print(content)
+
+
+[CODE] # Python: For loop
+for i in range(5):
+    print(f"Count: {i}")
+
+
+[CODE] # Python: Dictionaries
+person = {
+    "name": "Bob",
+    "age": 30,
+    "city": "New York"
+}
+print(person["name"])
+
+
+[CODE] # Python: Dictionaries
+person = {
+    "name": "Bob",
+    "age": 30,
+    "city": "New York"
+}
+print(person["name"])
+
+
+[CODE] # Python: While loop
+count = 0
+while count < 5:
+    print(count)
+    count += 1
+
+
+[CODE] # Python: Lists
+fruits = ["apple", "banana", "cherry"]
+fruits.append("orange")
+print(fruits[0])
+print(len(fruits))
+
+
+[CODE] # Python: Print Hello World
+print("Hello, World!")
+
+
+[CODE] # Python: List comprehension
+numbers = [1, 2, 3, 4, 5]
+squared = [x**2 for x in numbers]
+print(squared)
+
+
+[CODE] # Python: Lists
+fruits = ["apple", "banana", "cherry"]
+fruits.append("orange")
+print(fruits[0])
+print(len(fruits))
+
+
+[CODE] # Python: Lists
+fruits = ["apple", "banana", "cherry"]
+fruits.append("orange")
+print(fruits[0])
+print(len(fruits))
+
+
+[CODE] # Python: Lists
+fruits = ["apple", "banana", "cherry"]
+fruits.append("orange")
+print(fruits[0])
+print(len(fruits))
+
+
+[CODE] # Python: Class
+class Dog:
+    def __init__(self, name):
+        self.name = name
+    
+    def bark(self):
+        print(f"{self.name} says Woof!")
+
+my_dog = Dog("Buddy")
+my_dog.bark()
+
+
+[CODE] # Python: Variables and types
+name = "Alice"
+age = 25
+height = 5.6
+is_student = True
+
+
+[CODE] # Python: List comprehension
+numbers = [1, 2, 3, 4, 5]
+squared = [x**2 for x in numbers]
+print(squared)
+
+
+[CODE] # Python: Function
+def add_numbers(a, b):
+    return a + b
+
+result = add_numbers(5, 3)
+print(result)
+
+
+[CODE] # Python: Variables and types
+name = "Alice"
+age = 25
+height = 5.6
+is_student = True
+
+
+[CODE] # Python: Lists
+fruits = ["apple", "banana", "cherry"]
+fruits.append("orange")
+print(fruits[0])
+print(len(fruits))
+
+
+[CODE] # Python: While loop
+count = 0
+while count < 5:
+    print(count)
+    count += 1
+
+
+[CODE] # Python: For loop
+for i in range(5):
+    print(f"Count: {i}")
+
+
+[CODE] # Python: File reading
+with open('file.txt', 'r') as f:
+    content = f.read()
+    print(content)
+
+
+[CODE] # Python: List comprehension
+numbers = [1, 2, 3, 4, 5]
+squared = [x**2 for x in numbers]
+print(squared)
+
+
+[CODE] # Python: Class
+class Dog:
+    def __init__(self, name):
+        self.name = name
+    
+    def bark(self):
+        print(f"{self.name} says Woof!")
+
+my_dog = Dog("Buddy")
+my_dog.bark()
+
+
+[CODE] # Python: Class
+class Dog:
+    def __init__(self, name):
+        self.name = name
+    
+    def bark(self):
+        print(f"{self.name} says Woof!")
+
+my_dog = Dog("Buddy")
+my_dog.bark()
+
+
+[CODE] # Python: Function
+def add_numbers(a, b):
+    return a + b
+
+result = add_numbers(5, 3)
+print(result)
+
+
+[CODE] # Python: Function
+def add_numbers(a, b):
+    return a + b
+
+result = add_numbers(5, 3)
+print(result)
+
+
+[CODE] # Python: List comprehension
+numbers = [1, 2, 3, 4, 5]
+squared = [x**2 for x in numbers]
+print(squared)
+
+
+[CODE] # Python: Class
+class Dog:
+    def __init__(self, name):
+        self.name = name
+    
+    def bark(self):
+        print(f"{self.name} says Woof!")
+
+my_dog = Dog("Buddy")
+my_dog.bark()
+
+
+[CODE] # Python: While loop
+count = 0
+while count < 5:
+    print(count)
+    count += 1
+
+
+[CODE] # Python: List comprehension
+numbers = [1, 2, 3, 4, 5]
+squared = [x**2 for x in numbers]
+print(squared)
+
+
+[CODE] # Python: Dictionaries
+person = {
+    "name": "Bob",
+    "age": 30,
+    "city": "New York"
+}
+print(person["name"])
+
+
+[CODE] # Python: Lists
+fruits = ["apple", "banana", "cherry"]
+fruits.append("orange")
+print(fruits[0])
+print(len(fruits))
+
+
+[CODE] # Python: Print Hello World
+print("Hello, World!")
+
+
+[CODE] # Python: File reading
+with open('file.txt', 'r') as f:
+    content = f.read()
+    print(content)
+
+
+[CODE] # Python: Dictionaries
+person = {
+    "name": "Bob",
+    "age": 30,
+    "city": "New York"
+}
+print(person["name"])
+
+
+[CODE] # Python: List comprehension
+numbers = [1, 2, 3, 4, 5]
+squared = [x**2 for x in numbers]
+print(squared)
+
+
+[CODE] # Python: For loop
+for i in range(5):
+    print(f"Count: {i}")
+
+
+[CODE] # Python: List comprehension
+numbers = [1, 2, 3, 4, 5]
+squared = [x**2 for x in numbers]
+print(squared)
+
+
+[CODE] # Python: Print Hello World
+print("Hello, World!")
+
+
+[CODE] # Python: List comprehension
+numbers = [1, 2, 3, 4, 5]
+squared = [x**2 for x in numbers]
+print(squared)
+
+
+[CODE] # Python: Function
+def add_numbers(a, b):
+    return a + b
+
+result = add_numbers(5, 3)
+print(result)
+
+
+[CODE] # Python: Variables and types
+name = "Alice"
+age = 25
+height = 5.6
+is_student = True
+
+
+[CODE] # Python: List comprehension
+numbers = [1, 2, 3, 4, 5]
+squared = [x**2 for x in numbers]
+print(squared)
+
+
+[CODE] # Python: Class
+class Dog:
+    def __init__(self, name):
+        self.name = name
+    
+    def bark(self):
+        print(f"{self.name} says Woof!")
+
+my_dog = Dog("Buddy")
+my_dog.bark()
+
+
+[CODE] # Python: Print Hello World
+print("Hello, World!")
+
+
+[CODE] # Python: File reading
+with open('file.txt', 'r') as f:
+    content = f.read()
+    print(content)
+
+
+[CODE] # Python: Dictionaries
+person = {
+    "name": "Bob",
+    "age": 30,
+    "city": "New York"
+}
+print(person["name"])
+
+
+[CODE] # Python: File reading
+with open('file.txt', 'r') as f:
+    content = f.read()
+    print(content)
+
+
+[CODE] # Python: Class
+class Dog:
+    def __init__(self, name):
+        self.name = name
+    
+    def bark(self):
+        print(f"{self.name} says Woof!")
+
+my_dog = Dog("Buddy")
+my_dog.bark()
+
+
+[CODE] # Python: Lists
+fruits = ["apple", "banana", "cherry"]
+fruits.append("orange")
+print(fruits[0])
+print(len(fruits))
+
+
+[CODE] # Python: Function
+def add_numbers(a, b):
+    return a + b
+
+result = add_numbers(5, 3)
+print(result)
+
+
+[CODE] # Python: Class
+class Dog:
+    def __init__(self, name):
+        self.name = name
+    
+    def bark(self):
+        print(f"{self.name} says Woof!")
+
+my_dog = Dog("Buddy")
+my_dog.bark()
+
+
+[CODE] # Python: For loop
+for i in range(5):
+    print(f"Count: {i}")
+
+
+[CODE] # Python: File reading
+with open('file.txt', 'r') as f:
+    content = f.read()
+    print(content)
+
+
+[CODE] # Python: Dictionaries
+person = {
+    "name": "Bob",
+    "age": 30,
+    "city": "New York"
+}
+print(person["name"])
+
+
+[CODE] # Python: Dictionaries
+person = {
+    "name": "Bob",
+    "age": 30,
+    "city": "New York"
+}
+print(person["name"])
+
+
+[CODE] # Python: Class
+class Dog:
+    def __init__(self, name):
+        self.name = name
+    
+    def bark(self):
+        print(f"{self.name} says Woof!")
+
+my_dog = Dog("Buddy")
+my_dog.bark()
+
+
+[CODE] # Python: Lists
+fruits = ["apple", "banana", "cherry"]
+fruits.append("orange")
+print(fruits[0])
+print(len(fruits))
+
+
+[CODE] # Python: For loop
+for i in range(5):
+    print(f"Count: {i}")
+
+
+[CODE] # Python: Function
+def add_numbers(a, b):
+    return a + b
+
+result = add_numbers(5, 3)
+print(result)
+
+
+[CODE] # Python: Class
+class Dog:
+    def __init__(self, name):
+        self.name = name
+    
+    def bark(self):
+        print(f"{self.name} says Woof!")
+
+my_dog = Dog("Buddy")
+my_dog.bark()
+
+
+[CODE] # Python: Class
+class Dog:
+    def __init__(self, name):
+        self.name = name
+    
+    def bark(self):
+        print(f"{self.name} says Woof!")
+
+my_dog = Dog("Buddy")
+my_dog.bark()
+
+
+[CODE] # Python: List comprehension
+numbers = [1, 2, 3, 4, 5]
+squared = [x**2 for x in numbers]
+print(squared)
+
+
+[CODE] # Python: For loop
+for i in range(5):
+    print(f"Count: {i}")
+
+
+[CODE] # Python: For loop
+for i in range(5):
+    print(f"Count: {i}")
+
+
+[CODE] # Python: Dictionaries
+person = {
+    "name": "Bob",
+    "age": 30,
+    "city": "New York"
+}
+print(person["name"])
+
+
+[CODE] # Python: Dictionaries
+person = {
+    "name": "Bob",
+    "age": 30,
+    "city": "New York"
+}
+print(person["name"])
+
+
+[CODE] # Python: For loop
+for i in range(5):
+    print(f"Count: {i}")
+
+
+[CODE] # Python: For loop
+for i in range(5):
+    print(f"Count: {i}")
+
+
+[CODE] # Python: List comprehension
+numbers = [1, 2, 3, 4, 5]
+squared = [x**2 for x in numbers]
+print(squared)
+
+
+[CODE] # Python: List comprehension
+numbers = [1, 2, 3, 4, 5]
+squared = [x**2 for x in numbers]
+print(squared)
+
+
+[CODE] # Python: Dictionaries
+person = {
+    "name": "Bob",
+    "age": 30,
+    "city": "New York"
+}
+print(person["name"])
+
+
+[CODE] # Python: File reading
+with open('file.txt', 'r') as f:
+    content = f.read()
+    print(content)
+
+
+[CODE] # Python: Print Hello World
+print("Hello, World!")
+
+
+[CODE] # Python: Function
+def add_numbers(a, b):
+    return a + b
+
+result = add_numbers(5, 3)
+print(result)
+
+
+[CODE] # Python: Print Hello World
+print("Hello, World!")
+
+
+[CODE] # Python: For loop
+for i in range(5):
+    print(f"Count: {i}")
+
+
+[CODE] # Python: Print Hello World
+print("Hello, World!")
+
+
+[CODE] # Python: Print Hello World
+print("Hello, World!")
+
+
+[CODE] # Python: List comprehension
+numbers = [1, 2, 3, 4, 5]
+squared = [x**2 for x in numbers]
+print(squared)
+
+
+[CODE] # Python: While loop
+count = 0
+while count < 5:
+    print(count)
+    count += 1
+
+
+[CODE] # Python: Class
+class Dog:
+    def __init__(self, name):
+        self.name = name
+    
+    def bark(self):
+        print(f"{self.name} says Woof!")
+
+my_dog = Dog("Buddy")
+my_dog.bark()
+
+
+[CODE] # Python: File reading
+with open('file.txt', 'r') as f:
+    content = f.read()
+    print(content)
+
+
+[CODE] # Python: While loop
+count = 0
+while count < 5:
+    print(count)
+    count += 1
+
+
+[CODE] # Python: Variables and types
+name = "Alice"
+age = 25
+height = 5.6
+is_student = True
+
+
+[CODE] # Python: Print Hello World
+print("Hello, World!")
+
+
+[CODE] # Python: Function
+def add_numbers(a, b):
+    return a + b
+
+result = add_numbers(5, 3)
+print(result)
+
+
+[CODE] # Python: File reading
+with open('file.txt', 'r') as f:
+    content = f.read()
+    print(content)
+
+
+[CODE] # Python: Lists
+fruits = ["apple", "banana", "cherry"]
+fruits.append("orange")
+print(fruits[0])
+print(len(fruits))
+
+
+[CODE] # Python: Function
+def add_numbers(a, b):
+    return a + b
+
+result = add_numbers(5, 3)
+print(result)
+
+
+[CODE] # Python: Dictionaries
+person = {
+    "name": "Bob",
+    "age": 30,
+    "city": "New York"
+}
+print(person["name"])
+
+
+[CODE] # Python: While loop
+count = 0
+while count < 5:
+    print(count)
+    count += 1
+
+
+[CODE] # Python: While loop
+count = 0
+while count < 5:
+    print(count)
+    count += 1
+
+
+[CODE] # Python: Variables and types
+name = "Alice"
+age = 25
+height = 5.6
+is_student = True
+
+
+[CODE] # Python: For loop
+for i in range(5):
+    print(f"Count: {i}")
+
+
+[CODE] # Python: List comprehension
+numbers = [1, 2, 3, 4, 5]
+squared = [x**2 for x in numbers]
+print(squared)
+
+
+[CODE] # Python: Variables and types
+name = "Alice"
+age = 25
+height = 5.6
+is_student = True
+
+
+[CODE] # Python: Class
+class Dog:
+    def __init__(self, name):
+        self.name = name
+    
+    def bark(self):
+        print(f"{self.name} says Woof!")
+
+my_dog = Dog("Buddy")
+my_dog.bark()
+
+
+[CODE] # Python: Function
+def add_numbers(a, b):
+    return a + b
+
+result = add_numbers(5, 3)
+print(result)
+
+
+[CODE] # Python: Lists
+fruits = ["apple", "banana", "cherry"]
+fruits.append("orange")
+print(fruits[0])
+print(len(fruits))
+
+
+[CODE] # Python: List comprehension
+numbers = [1, 2, 3, 4, 5]
+squared = [x**2 for x in numbers]
+print(squared)
+
+
+[CODE] # Python: Dictionaries
+person = {
+    "name": "Bob",
+    "age": 30,
+    "city": "New York"
+}
+print(person["name"])
+
+
+[CODE] # Python: Function
+def add_numbers(a, b):
+    return a + b
+
+result = add_numbers(5, 3)
+print(result)
+
+
+[CODE] # Python: File reading
+with open('file.txt', 'r') as f:
+    content = f.read()
+    print(content)
+
+
+[CODE] # Python: Function
+def add_numbers(a, b):
+    return a + b
+
+result = add_numbers(5, 3)
+print(result)
+
+
+[CODE] # Python: Lists
+fruits = ["apple", "banana", "cherry"]
+fruits.append("orange")
+print(fruits[0])
+print(len(fruits))
+
+
+[CODE] # Python: Dictionaries
+person = {
+    "name": "Bob",
+    "age": 30,
+    "city": "New York"
+}
+print(person["name"])
+
+
+[CODE] # Python: For loop
+for i in range(5):
+    print(f"Count: {i}")
+
+
+[CODE] # Python: Class
+class Dog:
+    def __init__(self, name):
+        self.name = name
+    
+    def bark(self):
+        print(f"{self.name} says Woof!")
+
+my_dog = Dog("Buddy")
+my_dog.bark()
+
+
+[CODE] # Python: List comprehension
+numbers = [1, 2, 3, 4, 5]
+squared = [x**2 for x in numbers]
+print(squared)
+
+
+[CODE] # Python: Dictionaries
+person = {
+    "name": "Bob",
+    "age": 30,
+    "city": "New York"
+}
+print(person["name"])
+
+
+[CODE] # Python: Class
+class Dog:
+    def __init__(self, name):
+        self.name = name
+    
+    def bark(self):
+        print(f"{self.name} says Woof!")
+
+my_dog = Dog("Buddy")
+my_dog.bark()
+
+
+[CODE] # Python: File reading
+with open('file.txt', 'r') as f:
+    content = f.read()
+    print(content)
+
+
+[CODE] # Python: Function
+def add_numbers(a, b):
+    return a + b
+
+result = add_numbers(5, 3)
+print(result)
+
+
+[CODE] # Python: While loop
+count = 0
+while count < 5:
+    print(count)
+    count += 1
+
+
+[CODE] # Python: File reading
+with open('file.txt', 'r') as f:
+    content = f.read()
+    print(content)
+
+
+[CODE] # Python: Print Hello World
+print("Hello, World!")
+
+
+[CODE] # Python: While loop
+count = 0
+while count < 5:
+    print(count)
+    count += 1
+
+
+[CODE] # Python: Class
+class Dog:
+    def __init__(self, name):
+        self.name = name
+    
+    def bark(self):
+        print(f"{self.name} says Woof!")
+
+my_dog = Dog("Buddy")
+my_dog.bark()
+
+
+[CODE] # Python: Variables and types
+name = "Alice"
+age = 25
+height = 5.6
+is_student = True
+
+
+[CODE] # Python: Class
+class Dog:
+    def __init__(self, name):
+        self.name = name
+    
+    def bark(self):
+        print(f"{self.name} says Woof!")
+
+my_dog = Dog("Buddy")
+my_dog.bark()
+
+
+[CODE] # Python: For loop
+for i in range(5):
+    print(f"Count: {i}")
+
+
+[CODE] # Python: For loop
+for i in range(5):
+    print(f"Count: {i}")
+
+
+[CODE] # Python: While loop
+count = 0
+while count < 5:
+    print(count)
+    count += 1
+
+
+[CODE] # Python: Dictionaries
+person = {
+    "name": "Bob",
+    "age": 30,
+    "city": "New York"
+}
+print(person["name"])
+
+
+[CODE] # Python: For loop
+for i in range(5):
+    print(f"Count: {i}")
+
+
+[CODE] # Python: While loop
+count = 0
+while count < 5:
+    print(count)
+    count += 1
+
+
+[CODE] # Python: Class
+class Dog:
+    def __init__(self, name):
+        self.name = name
+    
+    def bark(self):
+        print(f"{self.name} says Woof!")
+
+my_dog = Dog("Buddy")
+my_dog.bark()
+
+
+[CODE] # Python: Dictionaries
+person = {
+    "name": "Bob",
+    "age": 30,
+    "city": "New York"
+}
+print(person["name"])
+
+
+[CODE] # Python: Variables and types
+name = "Alice"
+age = 25
+height = 5.6
+is_student = True
+
+
+[CODE] # Python: Lists
+fruits = ["apple", "banana", "cherry"]
+fruits.append("orange")
+print(fruits[0])
+print(len(fruits))
+
+
+[CODE] # Python: Dictionaries
+person = {
+    "name": "Bob",
+    "age": 30,
+    "city": "New York"
+}
+print(person["name"])
+
+
+[CODE] # Python: Lists
+fruits = ["apple", "banana", "cherry"]
+fruits.append("orange")
+print(fruits[0])
+print(len(fruits))
+
+
+[CODE] # Python: List comprehension
+numbers = [1, 2, 3, 4, 5]
+squared = [x**2 for x in numbers]
+print(squared)
+
+
+[CODE] # Python: While loop
+count = 0
+while count < 5:
+    print(count)
+    count += 1
+
+
+[CODE] # Python: List comprehension
+numbers = [1, 2, 3, 4, 5]
+squared = [x**2 for x in numbers]
+print(squared)
+
+
+[CODE] # Python: Variables and types
+name = "Alice"
+age = 25
+height = 5.6
+is_student = True
+
+
+[CODE] # Python: Lists
+fruits = ["apple", "banana", "cherry"]
+fruits.append("orange")
+print(fruits[0])
+print(len(fruits))
+
+
+[CODE] # Python: Variables and types
+name = "Alice"
+age = 25
+height = 5.6
+is_student = True
+
+
+[CODE] # Python: While loop
+count = 0
+while count < 5:
+    print(count)
+    count += 1
+
+
+[CODE] # Python: For loop
+for i in range(5):
+    print(f"Count: {i}")
+
+
+[CODE] # Python: Function
+def add_numbers(a, b):
+    return a + b
+
+result = add_numbers(5, 3)
+print(result)
+
+
+[CODE] # Python: Print Hello World
+print("Hello, World!")
+
+
+[CODE] # Python: While loop
+count = 0
+while count < 5:
+    print(count)
+    count += 1
+
+
+[CODE] # Python: Dictionaries
+person = {
+    "name": "Bob",
+    "age": 30,
+    "city": "New York"
+}
+print(person["name"])
+
+
+[CODE] # Python: List comprehension
+numbers = [1, 2, 3, 4, 5]
+squared = [x**2 for x in numbers]
+print(squared)
+
+
+[CODE] # Python: Function
+def add_numbers(a, b):
+    return a + b
+
+result = add_numbers(5, 3)
+print(result)
+
+
+[CODE] # Python: Print Hello World
+print("Hello, World!")
+
+
+[CODE] # Python: Print Hello World
+print("Hello, World!")
+
+
+[CODE] # Python: File reading
+with open('file.txt', 'r') as f:
+    content = f.read()
+    print(content)
+
+
+[CODE] # Python: For loop
+for i in range(5):
+    print(f"Count: {i}")
+
+
+[CODE] # Python: Variables and types
+name = "Alice"
+age = 25
+height = 5.6
+is_student = True
+
+
+[CODE] # Python: File reading
+with open('file.txt', 'r') as f:
+    content = f.read()
+    print(content)
+
+
+[CODE] # Python: List comprehension
+numbers = [1, 2, 3, 4, 5]
+squared = [x**2 for x in numbers]
+print(squared)
+
+
+[CODE] # Python: List comprehension
+numbers = [1, 2, 3, 4, 5]
+squared = [x**2 for x in numbers]
+print(squared)
+
+
+[CODE] # Python: For loop
+for i in range(5):
+    print(f"Count: {i}")
+
+
+[CODE] # Python: Lists
+fruits = ["apple", "banana", "cherry"]
+fruits.append("orange")
+print(fruits[0])
+print(len(fruits))
+
+
+[CODE] # Python: For loop
+for i in range(5):
+    print(f"Count: {i}")
+
+
+[CODE] # Python: Lists
+fruits = ["apple", "banana", "cherry"]
+fruits.append("orange")
+print(fruits[0])
+print(len(fruits))
+
+
+[CODE] # Python: Lists
+fruits = ["apple", "banana", "cherry"]
+fruits.append("orange")
+print(fruits[0])
+print(len(fruits))
+
+
+[CODE] # Python: File reading
+with open('file.txt', 'r') as f:
+    content = f.read()
+    print(content)
+
+
+[CODE] # Python: Function
+def add_numbers(a, b):
+    return a + b
+
+result = add_numbers(5, 3)
+print(result)
+
+
+[CODE] # Python: List comprehension
+numbers = [1, 2, 3, 4, 5]
+squared = [x**2 for x in numbers]
+print(squared)
+
+
+[CODE] # Python: Print Hello World
+print("Hello, World!")
+
+
+[CODE] # Python: Print Hello World
+print("Hello, World!")
+
+
+[CODE] # Python: Dictionaries
+person = {
+    "name": "Bob",
+    "age": 30,
+    "city": "New York"
+}
+print(person["name"])
+
+
+[CODE] # Python: Dictionaries
+person = {
+    "name": "Bob",
+    "age": 30,
+    "city": "New York"
+}
+print(person["name"])
+
+
+[CODE] # Python: Function
+def add_numbers(a, b):
+    return a + b
+
+result = add_numbers(5, 3)
+print(result)
+
+
+[CODE] # Python: While loop
+count = 0
+while count < 5:
+    print(count)
+    count += 1
+
+
+[CODE] # Python: Dictionaries
+person = {
+    "name": "Bob",
+    "age": 30,
+    "city": "New York"
+}
+print(person["name"])
+
+
+[CODE] # Python: Lists
+fruits = ["apple", "banana", "cherry"]
+fruits.append("orange")
+print(fruits[0])
+print(len(fruits))
+
+
+[CODE] # Python: Print Hello World
+print("Hello, World!")
+
+
+[CODE] # Python: List comprehension
+numbers = [1, 2, 3, 4, 5]
+squared = [x**2 for x in numbers]
+print(squared)
+
+
+[CODE] # Python: Print Hello World
+print("Hello, World!")
+
+
+[CODE] # Python: File reading
+with open('file.txt', 'r') as f:
+    content = f.read()
+    print(content)
+
+
+[CODE] # Python: Class
+class Dog:
+    def __init__(self, name):
+        self.name = name
+    
+    def bark(self):
+        print(f"{self.name} says Woof!")
+
+my_dog = Dog("Buddy")
+my_dog.bark()
+
+
+[CODE] # Python: List comprehension
+numbers = [1, 2, 3, 4, 5]
+squared = [x**2 for x in numbers]
+print(squared)
+
+
+[CODE] # Python: Print Hello World
+print("Hello, World!")
+
+
+[CODE] # Python: List comprehension
+numbers = [1, 2, 3, 4, 5]
+squared = [x**2 for x in numbers]
+print(squared)
+
+
+[CODE] # Python: Variables and types
+name = "Alice"
+age = 25
+height = 5.6
+is_student = True
+
+
+[CODE] # Python: Function
+def add_numbers(a, b):
+    return a + b
+
+result = add_numbers(5, 3)
+print(result)
+
+
+[CODE] # Python: Print Hello World
+print("Hello, World!")
+
+
+[CODE] # Python: Dictionaries
+person = {
+    "name": "Bob",
+    "age": 30,
+    "city": "New York"
+}
+print(person["name"])
+
+
+[CODE] # Python: While loop
+count = 0
+while count < 5:
+    print(count)
+    count += 1
+
+
+[CODE] # Python: Function
+def add_numbers(a, b):
+    return a + b
+
+result = add_numbers(5, 3)
+print(result)
+
+
+[CODE] # Python: While loop
+count = 0
+while count < 5:
+    print(count)
+    count += 1
+
+
+[CODE] # Python: Dictionaries
+person = {
+    "name": "Bob",
+    "age": 30,
+    "city": "New York"
+}
+print(person["name"])
+
+
+[CODE] # Python: Lists
+fruits = ["apple", "banana", "cherry"]
+fruits.append("orange")
+print(fruits[0])
+print(len(fruits))
+
+
+[CODE] # Python: List comprehension
+numbers = [1, 2, 3, 4, 5]
+squared = [x**2 for x in numbers]
+print(squared)
+
+
+[CODE] # Python: Print Hello World
+print("Hello, World!")
+
+
+[CODE] # Python: Function
+def add_numbers(a, b):
+    return a + b
+
+result = add_numbers(5, 3)
+print(result)
+
+
+[CODE] # Python: List comprehension
+numbers = [1, 2, 3, 4, 5]
+squared = [x**2 for x in numbers]
+print(squared)
+
+
+[CODE] # Python: Print Hello World
+print("Hello, World!")
+
+
+[CODE] # Python: File reading
+with open('file.txt', 'r') as f:
+    content = f.read()
+    print(content)
+
+
+[CODE] # Python: Lists
+fruits = ["apple", "banana", "cherry"]
+fruits.append("orange")
+print(fruits[0])
+print(len(fruits))
+
+
+[CODE] # Python: Variables and types
+name = "Alice"
+age = 25
+height = 5.6
+is_student = True
+
+
+[CODE] # Python: Print Hello World
+print("Hello, World!")
+
+
+[CODE] # Python: Print Hello World
+print("Hello, World!")
+
+
+[CODE] # Python: For loop
+for i in range(5):
+    print(f"Count: {i}")
+
+
+[CODE] # Python: File reading
+with open('file.txt', 'r') as f:
+    content = f.read()
+    print(content)
+
+
+[CODE] # Python: File reading
+with open('file.txt', 'r') as f:
+    content = f.read()
+    print(content)
+
+
+[CODE] # Python: Dictionaries
+person = {
+    "name": "Bob",
+    "age": 30,
+    "city": "New York"
+}
+print(person["name"])
+
+
+[CODE] # Python: Print Hello World
+print("Hello, World!")
+
+
+[CODE] # Python: While loop
+count = 0
+while count < 5:
+    print(count)
+    count += 1
+
+
+[CODE] # Python: Lists
+fruits = ["apple", "banana", "cherry"]
+fruits.append("orange")
+print(fruits[0])
+print(len(fruits))
+
+
+[CODE] # Python: List comprehension
+numbers = [1, 2, 3, 4, 5]
+squared = [x**2 for x in numbers]
+print(squared)
+
+
+[CODE] # Python: Variables and types
+name = "Alice"
+age = 25
+height = 5.6
+is_student = True
+
+
+[CODE] # Python: Class
+class Dog:
+    def __init__(self, name):
+        self.name = name
+    
+    def bark(self):
+        print(f"{self.name} says Woof!")
+
+my_dog = Dog("Buddy")
+my_dog.bark()
+
+
+[CODE] # Python: Variables and types
+name = "Alice"
+age = 25
+height = 5.6
+is_student = True
+
+
+[CODE] # Python: Print Hello World
+print("Hello, World!")
+
+
+[CODE] # Python: Dictionaries
+person = {
+    "name": "Bob",
+    "age": 30,
+    "city": "New York"
+}
+print(person["name"])
+
+
+[CODE] # Python: Class
+class Dog:
+    def __init__(self, name):
+        self.name = name
+    
+    def bark(self):
+        print(f"{self.name} says Woof!")
+
+my_dog = Dog("Buddy")
+my_dog.bark()
+
+
+[CODE] # Python: Variables and types
+name = "Alice"
+age = 25
+height = 5.6
+is_student = True
+
+
+[CODE] # Python: While loop
+count = 0
+while count < 5:
+    print(count)
+    count += 1
+
+
+[CODE] # Python: Class
+class Dog:
+    def __init__(self, name):
+        self.name = name
+    
+    def bark(self):
+        print(f"{self.name} says Woof!")
+
+my_dog = Dog("Buddy")
+my_dog.bark()
+
+
+[CODE] # Python: Function
+def add_numbers(a, b):
+    return a + b
+
+result = add_numbers(5, 3)
+print(result)
+
+
+[CODE] # Python: Class
+class Dog:
+    def __init__(self, name):
+        self.name = name
+    
+    def bark(self):
+        print(f"{self.name} says Woof!")
+
+my_dog = Dog("Buddy")
+my_dog.bark()
+
+
+[CODE] # Python: For loop
+for i in range(5):
+    print(f"Count: {i}")
+
+
+[CODE] # Python: File reading
+with open('file.txt', 'r') as f:
+    content = f.read()
+    print(content)
+
+
+[CODE] # Python: Print Hello World
+print("Hello, World!")
+
+
+[CODE] # Python: Class
+class Dog:
+    def __init__(self, name):
+        self.name = name
+    
+    def bark(self):
+        print(f"{self.name} says Woof!")
+
+my_dog = Dog("Buddy")
+my_dog.bark()
+
+
+[CODE] # Python: Class
+class Dog:
+    def __init__(self, name):
+        self.name = name
+    
+    def bark(self):
+        print(f"{self.name} says Woof!")
+
+my_dog = Dog("Buddy")
+my_dog.bark()
+
+
+[CODE] # Python: Dictionaries
+person = {
+    "name": "Bob",
+    "age": 30,
+    "city": "New York"
+}
+print(person["name"])
+
+
+[CODE] # Python: Lists
+fruits = ["apple", "banana", "cherry"]
+fruits.append("orange")
+print(fruits[0])
+print(len(fruits))
+
+
+[CODE] # Python: List comprehension
+numbers = [1, 2, 3, 4, 5]
+squared = [x**2 for x in numbers]
+print(squared)
+
+
+[CODE] # Python: For loop
+for i in range(5):
+    print(f"Count: {i}")
+
+
+[CODE] # Python: Function
+def add_numbers(a, b):
+    return a + b
+
+result = add_numbers(5, 3)
+print(result)
+
+
+[CODE] # Python: While loop
+count = 0
+while count < 5:
+    print(count)
+    count += 1
+
+
+[CODE] # Python: Lists
+fruits = ["apple", "banana", "cherry"]
+fruits.append("orange")
+print(fruits[0])
+print(len(fruits))
+
+
+[CODE] # Python: For loop
+for i in range(5):
+    print(f"Count: {i}")
+
+
+[CODE] # Python: Class
+class Dog:
+    def __init__(self, name):
+        self.name = name
+    
+    def bark(self):
+        print(f"{self.name} says Woof!")
+
+my_dog = Dog("Buddy")
+my_dog.bark()
+
+
+[CODE] # Python: For loop
+for i in range(5):
+    print(f"Count: {i}")
+
+
+[CODE] # Python: Class
+class Dog:
+    def __init__(self, name):
+        self.name = name
+    
+    def bark(self):
+        print(f"{self.name} says Woof!")
+
+my_dog = Dog("Buddy")
+my_dog.bark()
+
+
+[CODE] # Python: Variables and types
+name = "Alice"
+age = 25
+height = 5.6
+is_student = True
+
+
+[CODE] # Python: Class
+class Dog:
+    def __init__(self, name):
+        self.name = name
+    
+    def bark(self):
+        print(f"{self.name} says Woof!")
+
+my_dog = Dog("Buddy")
+my_dog.bark()
+
+
+[CODE] # Python: While loop
+count = 0
+while count < 5:
+    print(count)
+    count += 1
+
+
+[CODE] # Python: Lists
+fruits = ["apple", "banana", "cherry"]
+fruits.append("orange")
+print(fruits[0])
+print(len(fruits))
+
+
+[CODE] # Python: Class
+class Dog:
+    def __init__(self, name):
+        self.name = name
+    
+    def bark(self):
+        print(f"{self.name} says Woof!")
+
+my_dog = Dog("Buddy")
+my_dog.bark()
+
+
+[CODE] # Python: While loop
+count = 0
+while count < 5:
+    print(count)
+    count += 1
+
+
+[CODE] # Python: Function
+def add_numbers(a, b):
+    return a + b
+
+result = add_numbers(5, 3)
+print(result)
+
+
+[CODE] # Python: Class
+class Dog:
+    def __init__(self, name):
+        self.name = name
+    
+    def bark(self):
+        print(f"{self.name} says Woof!")
+
+my_dog = Dog("Buddy")
+my_dog.bark()
+
+
+[CODE] # Python: Lists
+fruits = ["apple", "banana", "cherry"]
+fruits.append("orange")
+print(fruits[0])
+print(len(fruits))
+
+
+[CODE] # Python: While loop
+count = 0
+while count < 5:
+    print(count)
+    count += 1
+
+
+[CODE] # Python: Class
+class Dog:
+    def __init__(self, name):
+        self.name = name
+    
+    def bark(self):
+        print(f"{self.name} says Woof!")
+
+my_dog = Dog("Buddy")
+my_dog.bark()
+
+
+[CODE] # Python: Lists
+fruits = ["apple", "banana", "cherry"]
+fruits.append("orange")
+print(fruits[0])
+print(len(fruits))
+
+
+[CODE] # Python: File reading
+with open('file.txt', 'r') as f:
+    content = f.read()
+    print(content)
+
+
+[CODE] # Python: Print Hello World
+print("Hello, World!")
+
+
+[CODE] # Python: Lists
+fruits = ["apple", "banana", "cherry"]
+fruits.append("orange")
+print(fruits[0])
+print(len(fruits))
+
+
+[CODE] # Python: While loop
+count = 0
+while count < 5:
+    print(count)
+    count += 1
+
+
+[CODE] # Python: List comprehension
+numbers = [1, 2, 3, 4, 5]
+squared = [x**2 for x in numbers]
+print(squared)
+
+
+[CODE] # Python: Class
+class Dog:
+    def __init__(self, name):
+        self.name = name
+    
+    def bark(self):
+        print(f"{self.name} says Woof!")
+
+my_dog = Dog("Buddy")
+my_dog.bark()
+
+
+[CODE] # Python: File reading
+with open('file.txt', 'r') as f:
+    content = f.read()
+    print(content)
+
+
+[CODE] # Python: Dictionaries
+person = {
+    "name": "Bob",
+    "age": 30,
+    "city": "New York"
+}
+print(person["name"])
+
+
+[CODE] # Python: File reading
+with open('file.txt', 'r') as f:
+    content = f.read()
+    print(content)
+
+
+[CODE] # Python: Print Hello World
+print("Hello, World!")
+
+
+[CODE] # Python: Lists
+fruits = ["apple", "banana", "cherry"]
+fruits.append("orange")
+print(fruits[0])
+print(len(fruits))
+
+
+[CODE] # Python: Lists
+fruits = ["apple", "banana", "cherry"]
+fruits.append("orange")
+print(fruits[0])
+print(len(fruits))
+
+
+[CODE] # Python: Class
+class Dog:
+    def __init__(self, name):
+        self.name = name
+    
+    def bark(self):
+        print(f"{self.name} says Woof!")
+
+my_dog = Dog("Buddy")
+my_dog.bark()
+
+
+[CODE] # Python: While loop
+count = 0
+while count < 5:
+    print(count)
+    count += 1
+
+
+[CODE] # Python: For loop
+for i in range(5):
+    print(f"Count: {i}")
+
+
+[CODE] # Python: Class
+class Dog:
+    def __init__(self, name):
+        self.name = name
+    
+    def bark(self):
+        print(f"{self.name} says Woof!")
+
+my_dog = Dog("Buddy")
+my_dog.bark()
+
+
+[CODE] # Python: Variables and types
+name = "Alice"
+age = 25
+height = 5.6
+is_student = True
+
+
+[CODE] # Python: Class
+class Dog:
+    def __init__(self, name):
+        self.name = name
+    
+    def bark(self):
+        print(f"{self.name} says Woof!")
+
+my_dog = Dog("Buddy")
+my_dog.bark()
+
+
+[CODE] # Python: Variables and types
+name = "Alice"
+age = 25
+height = 5.6
+is_student = True
+
+
+[CODE] # Python: Variables and types
+name = "Alice"
+age = 25
+height = 5.6
+is_student = True
+
+
+[CODE] # Python: Function
+def add_numbers(a, b):
+    return a + b
+
+result = add_numbers(5, 3)
+print(result)
+
+
+[CODE] # Python: While loop
+count = 0
+while count < 5:
+    print(count)
+    count += 1
+
+
+[CODE] # Python: Function
+def add_numbers(a, b):
+    return a + b
+
+result = add_numbers(5, 3)
+print(result)
+
+
+[CODE] # Python: Dictionaries
+person = {
+    "name": "Bob",
+    "age": 30,
+    "city": "New York"
+}
+print(person["name"])
+
+
+[CODE] # Python: File reading
+with open('file.txt', 'r') as f:
+    content = f.read()
+    print(content)
+
+
+[CODE] # Python: While loop
+count = 0
+while count < 5:
+    print(count)
+    count += 1
+
+
+[CODE] # Python: Class
+class Dog:
+    def __init__(self, name):
+        self.name = name
+    
+    def bark(self):
+        print(f"{self.name} says Woof!")
+
+my_dog = Dog("Buddy")
+my_dog.bark()
+
+
+[CODE] # Python: File reading
+with open('file.txt', 'r') as f:
+    content = f.read()
+    print(content)
+
+
+[CODE] # Python: Variables and types
+name = "Alice"
+age = 25
+height = 5.6
+is_student = True
+
+
+[CODE] # Python: Lists
+fruits = ["apple", "banana", "cherry"]
+fruits.append("orange")
+print(fruits[0])
+print(len(fruits))
+
+
+[CODE] # Python: Print Hello World
+print("Hello, World!")
+
+
+[CODE] # Python: For loop
+for i in range(5):
+    print(f"Count: {i}")
+
+
+[CODE] # Python: List comprehension
+numbers = [1, 2, 3, 4, 5]
+squared = [x**2 for x in numbers]
+print(squared)
+
+
+[CODE] # Python: While loop
+count = 0
+while count < 5:
+    print(count)
+    count += 1
+
+
+[CODE] # Python: While loop
+count = 0
+while count < 5:
+    print(count)
+    count += 1
+
+
+[CODE] # Python: Dictionaries
+person = {
+    "name": "Bob",
+    "age": 30,
+    "city": "New York"
+}
+print(person["name"])
+
+
+[CODE] # Python: While loop
+count = 0
+while count < 5:
+    print(count)
+    count += 1
+
+
+[CODE] # Python: Class
+class Dog:
+    def __init__(self, name):
+        self.name = name
+    
+    def bark(self):
+        print(f"{self.name} says Woof!")
+
+my_dog = Dog("Buddy")
+my_dog.bark()
+
+
+[CODE] # Python: File reading
+with open('file.txt', 'r') as f:
+    content = f.read()
+    print(content)
+
+
+[CODE] # Python: For loop
+for i in range(5):
+    print(f"Count: {i}")
+
+
+[CODE] # Python: Print Hello World
+print("Hello, World!")
+
+
+[CODE] # Python: Function
+def add_numbers(a, b):
+    return a + b
+
+result = add_numbers(5, 3)
+print(result)
+
+
+[CODE] # Python: Print Hello World
+print("Hello, World!")
+
+
+[CODE] # Python: Function
+def add_numbers(a, b):
+    return a + b
+
+result = add_numbers(5, 3)
+print(result)
+
+
+[CODE] # Python: Function
+def add_numbers(a, b):
+    return a + b
+
+result = add_numbers(5, 3)
+print(result)
+
+
+[CODE] # Python: Dictionaries
+person = {
+    "name": "Bob",
+    "age": 30,
+    "city": "New York"
+}
+print(person["name"])
+
+
+[CODE] # Python: Dictionaries
+person = {
+    "name": "Bob",
+    "age": 30,
+    "city": "New York"
+}
+print(person["name"])
+
+
+[CODE] # Python: While loop
+count = 0
+while count < 5:
+    print(count)
+    count += 1
+
+
+[CODE] # Python: Dictionaries
+person = {
+    "name": "Bob",
+    "age": 30,
+    "city": "New York"
+}
+print(person["name"])
+
+
+[CODE] # Python: Print Hello World
+print("Hello, World!")
+
+
+[CODE] # Python: Function
+def add_numbers(a, b):
+    return a + b
+
+result = add_numbers(5, 3)
+print(result)
+
+
+[CODE] # Python: Lists
+fruits = ["apple", "banana", "cherry"]
+fruits.append("orange")
+print(fruits[0])
+print(len(fruits))
+
+
+[CODE] # Python: Class
+class Dog:
+    def __init__(self, name):
+        self.name = name
+    
+    def bark(self):
+        print(f"{self.name} says Woof!")
+
+my_dog = Dog("Buddy")
+my_dog.bark()
+
+
+[CODE] # Python: For loop
+for i in range(5):
+    print(f"Count: {i}")
+
+
+[CODE] # Python: Print Hello World
+print("Hello, World!")
+
+
+[CODE] # Python: Class
+class Dog:
+    def __init__(self, name):
+        self.name = name
+    
+    def bark(self):
+        print(f"{self.name} says Woof!")
+
+my_dog = Dog("Buddy")
+my_dog.bark()
+
+
+[CODE] # Python: While loop
+count = 0
+while count < 5:
+    print(count)
+    count += 1
+
+
+[CODE] # Python: File reading
+with open('file.txt', 'r') as f:
+    content = f.read()
+    print(content)
+
+
+[CODE] # Python: Dictionaries
+person = {
+    "name": "Bob",
+    "age": 30,
+    "city": "New York"
+}
+print(person["name"])
+
+
+[CODE] # Python: Print Hello World
+print("Hello, World!")
+
+
+[CODE] # Python: Lists
+fruits = ["apple", "banana", "cherry"]
+fruits.append("orange")
+print(fruits[0])
+print(len(fruits))
+
+
+[CODE] # Python: Variables and types
+name = "Alice"
+age = 25
+height = 5.6
+is_student = True
+
+
+[CODE] # Python: Print Hello World
+print("Hello, World!")
+
+
+[CODE] # Python: Function
+def add_numbers(a, b):
+    return a + b
+
+result = add_numbers(5, 3)
+print(result)
+
+
+[CODE] # Python: Class
+class Dog:
+    def __init__(self, name):
+        self.name = name
+    
+    def bark(self):
+        print(f"{self.name} says Woof!")
+
+my_dog = Dog("Buddy")
+my_dog.bark()
+
+
+[CODE] # Python: File reading
+with open('file.txt', 'r') as f:
+    content = f.read()
+    print(content)
+
+
+[CODE] # Python: While loop
+count = 0
+while count < 5:
+    print(count)
+    count += 1
+
+
+[CODE] # Python: List comprehension
+numbers = [1, 2, 3, 4, 5]
+squared = [x**2 for x in numbers]
+print(squared)
+
+
+[CODE] # Python: Variables and types
+name = "Alice"
+age = 25
+height = 5.6
+is_student = True
+
+
+[CODE] # Python: Dictionaries
+person = {
+    "name": "Bob",
+    "age": 30,
+    "city": "New York"
+}
+print(person["name"])
+
+
+[CODE] # Python: For loop
+for i in range(5):
+    print(f"Count: {i}")
+
+
+[CODE] # Python: Class
+class Dog:
+    def __init__(self, name):
+        self.name = name
+    
+    def bark(self):
+        print(f"{self.name} says Woof!")
+
+my_dog = Dog("Buddy")
+my_dog.bark()
+
+
+[CODE] # Python: Variables and types
+name = "Alice"
+age = 25
+height = 5.6
+is_student = True
+
+
+[CODE] # Python: List comprehension
+numbers = [1, 2, 3, 4, 5]
+squared = [x**2 for x in numbers]
+print(squared)
+
+
+[CODE] # Python: Function
+def add_numbers(a, b):
+    return a + b
+
+result = add_numbers(5, 3)
+print(result)
+
+
+[CODE] # Python: Print Hello World
+print("Hello, World!")
+
+
+[CODE] # Python: Lists
+fruits = ["apple", "banana", "cherry"]
+fruits.append("orange")
+print(fruits[0])
+print(len(fruits))
+
+
+[CODE] # Python: Variables and types
+name = "Alice"
+age = 25
+height = 5.6
+is_student = True
+
+
+[CODE] # Python: List comprehension
+numbers = [1, 2, 3, 4, 5]
+squared = [x**2 for x in numbers]
+print(squared)
+
+
+[CODE] # Python: Dictionaries
+person = {
+    "name": "Bob",
+    "age": 30,
+    "city": "New York"
+}
+print(person["name"])
+
+
+[CODE] # Python: For loop
+for i in range(5):
+    print(f"Count: {i}")
+
+
+[CODE] # Python: Class
+class Dog:
+    def __init__(self, name):
+        self.name = name
+    
+    def bark(self):
+        print(f"{self.name} says Woof!")
+
+my_dog = Dog("Buddy")
+my_dog.bark()
+
+
+[CODE] # Python: Dictionaries
+person = {
+    "name": "Bob",
+    "age": 30,
+    "city": "New York"
+}
+print(person["name"])
+
+
+[CODE] # Python: Variables and types
+name = "Alice"
+age = 25
+height = 5.6
+is_student = True
+
+
+[CODE] # Python: Variables and types
+name = "Alice"
+age = 25
+height = 5.6
+is_student = True
+
+
+[CODE] # Python: While loop
+count = 0
+while count < 5:
+    print(count)
+    count += 1
+
+
+[CODE] # Python: Lists
+fruits = ["apple", "banana", "cherry"]
+fruits.append("orange")
+print(fruits[0])
+print(len(fruits))
+
+
+[CODE] # Python: For loop
+for i in range(5):
+    print(f"Count: {i}")
+
+
+[CODE] # Python: List comprehension
+numbers = [1, 2, 3, 4, 5]
+squared = [x**2 for x in numbers]
+print(squared)
+
+
+[CODE] # Python: Function
+def add_numbers(a, b):
+    return a + b
+
+result = add_numbers(5, 3)
+print(result)
+
+
+[CODE] # Python: Function
+def add_numbers(a, b):
+    return a + b
+
+result = add_numbers(5, 3)
+print(result)
+
+
+[CODE] # Python: Print Hello World
+print("Hello, World!")
+
+
+[CODE] # Python: Lists
+fruits = ["apple", "banana", "cherry"]
+fruits.append("orange")
+print(fruits[0])
+print(len(fruits))
+
+
+[CODE] # Python: Class
+class Dog:
+    def __init__(self, name):
+        self.name = name
+    
+    def bark(self):
+        print(f"{self.name} says Woof!")
+
+my_dog = Dog("Buddy")
+my_dog.bark()
+
+
+[CODE] # Python: Class
+class Dog:
+    def __init__(self, name):
+        self.name = name
+    
+    def bark(self):
+        print(f"{self.name} says Woof!")
+
+my_dog = Dog("Buddy")
+my_dog.bark()
+
+
+[CODE] # Python: While loop
+count = 0
+while count < 5:
+    print(count)
+    count += 1
+
+
+[CODE] # Python: For loop
+for i in range(5):
+    print(f"Count: {i}")
+
+
+[CODE] # Python: Class
+class Dog:
+    def __init__(self, name):
+        self.name = name
+    
+    def bark(self):
+        print(f"{self.name} says Woof!")
+
+my_dog = Dog("Buddy")
+my_dog.bark()
+
+
+[CODE] # Python: For loop
+for i in range(5):
+    print(f"Count: {i}")
+
+
+[CODE] # Python: Lists
+fruits = ["apple", "banana", "cherry"]
+fruits.append("orange")
+print(fruits[0])
+print(len(fruits))
+
+
+[CODE] # Python: List comprehension
+numbers = [1, 2, 3, 4, 5]
+squared = [x**2 for x in numbers]
+print(squared)
+
+
+[CODE] # Python: Dictionaries
+person = {
+    "name": "Bob",
+    "age": 30,
+    "city": "New York"
+}
+print(person["name"])
+
+
+[CODE] # Python: Print Hello World
+print("Hello, World!")
+
+
+[CODE] # Python: Print Hello World
+print("Hello, World!")
+
+
+[CODE] # Python: List comprehension
+numbers = [1, 2, 3, 4, 5]
+squared = [x**2 for x in numbers]
+print(squared)
+
+
+[CODE] # Python: Function
+def add_numbers(a, b):
+    return a + b
+
+result = add_numbers(5, 3)
+print(result)
+
+
+[CODE] # Python: Function
+def add_numbers(a, b):
+    return a + b
+
+result = add_numbers(5, 3)
+print(result)
+
+
+[CODE] # Python: File reading
+with open('file.txt', 'r') as f:
+    content = f.read()
+    print(content)
+
+
+[CODE] # Python: Print Hello World
+print("Hello, World!")
+
+
+[CODE] # Python: While loop
+count = 0
+while count < 5:
+    print(count)
+    count += 1
+
+
+[CODE] # Python: File reading
+with open('file.txt', 'r') as f:
+    content = f.read()
+    print(content)
+
+
+[CODE] # Python: Variables and types
+name = "Alice"
+age = 25
+height = 5.6
+is_student = True
+
+
+[CODE] # Python: Print Hello World
+print("Hello, World!")
+
+
+[CODE] # Python: While loop
+count = 0
+while count < 5:
+    print(count)
+    count += 1
+
+
+[CODE] # Python: File reading
+with open('file.txt', 'r') as f:
+    content = f.read()
+    print(content)
+
+
+[CODE] # Python: Print Hello World
+print("Hello, World!")
+
+
+[CODE] # Python: While loop
+count = 0
+while count < 5:
+    print(count)
+    count += 1
+
+
+[CODE] # Python: File reading
+with open('file.txt', 'r') as f:
+    content = f.read()
+    print(content)
+
+
+[CODE] # Python: List comprehension
+numbers = [1, 2, 3, 4, 5]
+squared = [x**2 for x in numbers]
+print(squared)
+
+
+[CODE] # Python: For loop
+for i in range(5):
+    print(f"Count: {i}")
+
+
+[CODE] # Python: File reading
+with open('file.txt', 'r') as f:
+    content = f.read()
+    print(content)
+
+
+[CODE] # Python: Class
+class Dog:
+    def __init__(self, name):
+        self.name = name
+    
+    def bark(self):
+        print(f"{self.name} says Woof!")
+
+my_dog = Dog("Buddy")
+my_dog.bark()
+
+
+[CODE] # Python: Class
+class Dog:
+    def __init__(self, name):
+        self.name = name
+    
+    def bark(self):
+        print(f"{self.name} says Woof!")
+
+my_dog = Dog("Buddy")
+my_dog.bark()
+
+
+[CODE] # Python: File reading
+with open('file.txt', 'r') as f:
+    content = f.read()
+    print(content)
+
+
+[CODE] # Python: Lists
+fruits = ["apple", "banana", "cherry"]
+fruits.append("orange")
+print(fruits[0])
+print(len(fruits))
+
+
+[CODE] # Python: For loop
+for i in range(5):
+    print(f"Count: {i}")
+
+
+[CODE] # Python: Class
+class Dog:
+    def __init__(self, name):
+        self.name = name
+    
+    def bark(self):
+        print(f"{self.name} says Woof!")
+
+my_dog = Dog("Buddy")
+my_dog.bark()
+
+
+[CODE] # Python: File reading
+with open('file.txt', 'r') as f:
+    content = f.read()
+    print(content)
+
+
+[CODE] # Python: Variables and types
+name = "Alice"
+age = 25
+height = 5.6
+is_student = True
+
+
+[CODE] # Python: List comprehension
+numbers = [1, 2, 3, 4, 5]
+squared = [x**2 for x in numbers]
+print(squared)
+
+
+[CODE] # Python: Lists
+fruits = ["apple", "banana", "cherry"]
+fruits.append("orange")
+print(fruits[0])
+print(len(fruits))
+
+
+[CODE] # Python: Variables and types
+name = "Alice"
+age = 25
+height = 5.6
+is_student = True
+
+
+[CODE] # Python: List comprehension
+numbers = [1, 2, 3, 4, 5]
+squared = [x**2 for x in numbers]
+print(squared)
+
+
+[CODE] # Python: Variables and types
+name = "Alice"
+age = 25
+height = 5.6
+is_student = True
+
+
+[CODE] # Python: Lists
+fruits = ["apple", "banana", "cherry"]
+fruits.append("orange")
+print(fruits[0])
+print(len(fruits))
+
+
+[CODE] # Python: File reading
+with open('file.txt', 'r') as f:
+    content = f.read()
+    print(content)
+
+
+[CODE] # Python: Dictionaries
+person = {
+    "name": "Bob",
+    "age": 30,
+    "city": "New York"
+}
+print(person["name"])
+
+
+[CODE] # Python: File reading
+with open('file.txt', 'r') as f:
+    content = f.read()
+    print(content)
+
+
+[CODE] # Python: Lists
+fruits = ["apple", "banana", "cherry"]
+fruits.append("orange")
+print(fruits[0])
+print(len(fruits))
+
+
+[CODE] # Python: Function
+def add_numbers(a, b):
+    return a + b
+
+result = add_numbers(5, 3)
+print(result)
+
+
+[CODE] # Python: While loop
+count = 0
+while count < 5:
+    print(count)
+    count += 1
+
+
+[CODE] # Python: For loop
+for i in range(5):
+    print(f"Count: {i}")
+
+
+[CODE] # Python: List comprehension
+numbers = [1, 2, 3, 4, 5]
+squared = [x**2 for x in numbers]
+print(squared)
+
+
+[CODE] # Python: While loop
+count = 0
+while count < 5:
+    print(count)
+    count += 1
+
+
+[CODE] # Python: While loop
+count = 0
+while count < 5:
+    print(count)
+    count += 1
+
+
+[CODE] # Python: List comprehension
+numbers = [1, 2, 3, 4, 5]
+squared = [x**2 for x in numbers]
+print(squared)
+
+
+[CODE] # Python: Dictionaries
+person = {
+    "name": "Bob",
+    "age": 30,
+    "city": "New York"
+}
+print(person["name"])
+
+
+[CODE] # Python: Print Hello World
+print("Hello, World!")
+
+
+[CODE] # Python: File reading
+with open('file.txt', 'r') as f:
+    content = f.read()
+    print(content)
+
+
+[CODE] # Python: Function
+def add_numbers(a, b):
+    return a + b
+
+result = add_numbers(5, 3)
+print(result)
+
+
+[CODE] # Python: List comprehension
+numbers = [1, 2, 3, 4, 5]
+squared = [x**2 for x in numbers]
+print(squared)
+
+
+[CODE] # Python: List comprehension
+numbers = [1, 2, 3, 4, 5]
+squared = [x**2 for x in numbers]
+print(squared)
+
+
+[CODE] # Python: List comprehension
+numbers = [1, 2, 3, 4, 5]
+squared = [x**2 for x in numbers]
+print(squared)
+
+
+[CODE] # Python: Print Hello World
+print("Hello, World!")
+
+
+[CODE] # Python: While loop
+count = 0
+while count < 5:
+    print(count)
+    count += 1
+
+
+[CODE] # Python: List comprehension
+numbers = [1, 2, 3, 4, 5]
+squared = [x**2 for x in numbers]
+print(squared)
+
+
+[CODE] # Python: Variables and types
+name = "Alice"
+age = 25
+height = 5.6
+is_student = True
+
+
+[CODE] # Python: Lists
+fruits = ["apple", "banana", "cherry"]
+fruits.append("orange")
+print(fruits[0])
+print(len(fruits))
+
+
+[CODE] # Python: File reading
+with open('file.txt', 'r') as f:
+    content = f.read()
+    print(content)
+
+
+[CODE] # Python: File reading
+with open('file.txt', 'r') as f:
+    content = f.read()
+    print(content)
+
+
+[CODE] # Python: While loop
+count = 0
+while count < 5:
+    print(count)
+    count += 1
+
+
+[CODE] # Python: Dictionaries
+person = {
+    "name": "Bob",
+    "age": 30,
+    "city": "New York"
+}
+print(person["name"])
+
+
+[CODE] # Python: Class
+class Dog:
+    def __init__(self, name):
+        self.name = name
+    
+    def bark(self):
+        print(f"{self.name} says Woof!")
+
+my_dog = Dog("Buddy")
+my_dog.bark()
+
+
+[CODE] # Python: Function
+def add_numbers(a, b):
+    return a + b
+
+result = add_numbers(5, 3)
+print(result)
+
+
+[CODE] # Python: While loop
+count = 0
+while count < 5:
+    print(count)
+    count += 1
+
+
+[CODE] # Python: Print Hello World
+print("Hello, World!")
+
+
+[CODE] # Python: Variables and types
+name = "Alice"
+age = 25
+height = 5.6
+is_student = True
+
+
+[CODE] # Python: While loop
+count = 0
+while count < 5:
+    print(count)
+    count += 1
+
+
+[CODE] # Python: List comprehension
+numbers = [1, 2, 3, 4, 5]
+squared = [x**2 for x in numbers]
+print(squared)
+
+
+[CODE] # Python: List comprehension
+numbers = [1, 2, 3, 4, 5]
+squared = [x**2 for x in numbers]
+print(squared)
+
+
+[CODE] # Python: Lists
+fruits = ["apple", "banana", "cherry"]
+fruits.append("orange")
+print(fruits[0])
+print(len(fruits))
+
+
+[CODE] # Python: Print Hello World
+print("Hello, World!")
+
+
+[CODE] # Python: Function
+def add_numbers(a, b):
+    return a + b
+
+result = add_numbers(5, 3)
+print(result)
+
+
+[CODE] # Python: For loop
+for i in range(5):
+    print(f"Count: {i}")
+
+
+[CODE] # Python: Class
+class Dog:
+    def __init__(self, name):
+        self.name = name
+    
+    def bark(self):
+        print(f"{self.name} says Woof!")
+
+my_dog = Dog("Buddy")
+my_dog.bark()
+
+
+[CODE] # Python: Dictionaries
+person = {
+    "name": "Bob",
+    "age": 30,
+    "city": "New York"
+}
+print(person["name"])
+
+
+[CODE] # Python: File reading
+with open('file.txt', 'r') as f:
+    content = f.read()
+    print(content)
+
+
+[CODE] # Python: Dictionaries
+person = {
+    "name": "Bob",
+    "age": 30,
+    "city": "New York"
+}
+print(person["name"])
+
+
+[CODE] # Python: While loop
+count = 0
+while count < 5:
+    print(count)
+    count += 1
+
+
+[CODE] # Python: List comprehension
+numbers = [1, 2, 3, 4, 5]
+squared = [x**2 for x in numbers]
+print(squared)
+
+
+[CODE] # Python: Function
+def add_numbers(a, b):
+    return a + b
+
+result = add_numbers(5, 3)
+print(result)
+
+
+[CODE] # Python: File reading
+with open('file.txt', 'r') as f:
+    content = f.read()
+    print(content)
+
+
+[CODE] # Python: List comprehension
+numbers = [1, 2, 3, 4, 5]
+squared = [x**2 for x in numbers]
+print(squared)
+
+
+[CODE] # Python: Function
+def add_numbers(a, b):
+    return a + b
+
+result = add_numbers(5, 3)
+print(result)
+
+
+[CODE] # Python: Lists
+fruits = ["apple", "banana", "cherry"]
+fruits.append("orange")
+print(fruits[0])
+print(len(fruits))
+
+
+[CODE] # Python: Variables and types
+name = "Alice"
+age = 25
+height = 5.6
+is_student = True
+
+
+[CODE] # Python: Lists
+fruits = ["apple", "banana", "cherry"]
+fruits.append("orange")
+print(fruits[0])
+print(len(fruits))
+
+
+[CODE] # Python: List comprehension
+numbers = [1, 2, 3, 4, 5]
+squared = [x**2 for x in numbers]
+print(squared)
+
+
+[CODE] # Python: For loop
+for i in range(5):
+    print(f"Count: {i}")
+
+
+[CODE] # Python: List comprehension
+numbers = [1, 2, 3, 4, 5]
+squared = [x**2 for x in numbers]
+print(squared)
+
+
+[CODE] # Python: List comprehension
+numbers = [1, 2, 3, 4, 5]
+squared = [x**2 for x in numbers]
+print(squared)
+
+
+[CODE] # Python: Print Hello World
+print("Hello, World!")
+
+
+[CODE] # Python: Dictionaries
+person = {
+    "name": "Bob",
+    "age": 30,
+    "city": "New York"
+}
+print(person["name"])
+
+
+[CODE] # Python: For loop
+for i in range(5):
+    print(f"Count: {i}")
+
+
+[CODE] # Python: Variables and types
+name = "Alice"
+age = 25
+height = 5.6
+is_student = True
+
+
+[CODE] # Python: Function
+def add_numbers(a, b):
+    return a + b
+
+result = add_numbers(5, 3)
+print(result)
+
+
+[CODE] # Python: Dictionaries
+person = {
+    "name": "Bob",
+    "age": 30,
+    "city": "New York"
+}
+print(person["name"])
+
+
+[CODE] # Python: Print Hello World
+print("Hello, World!")
+
+
+[CODE] # Python: Function
+def add_numbers(a, b):
+    return a + b
+
+result = add_numbers(5, 3)
+print(result)
+
+
+[CODE] # Python: For loop
+for i in range(5):
+    print(f"Count: {i}")
+
+
+[CODE] # Python: File reading
+with open('file.txt', 'r') as f:
+    content = f.read()
+    print(content)
+
+
+[CODE] # Python: For loop
+for i in range(5):
+    print(f"Count: {i}")
+
+
+[CODE] # Python: While loop
+count = 0
+while count < 5:
+    print(count)
+    count += 1
+
+
+[CODE] # Python: List comprehension
+numbers = [1, 2, 3, 4, 5]
+squared = [x**2 for x in numbers]
+print(squared)
+
+
+[CODE] # Python: While loop
+count = 0
+while count < 5:
+    print(count)
+    count += 1
+
+
+[CODE] # Python: Lists
+fruits = ["apple", "banana", "cherry"]
+fruits.append("orange")
+print(fruits[0])
+print(len(fruits))
+
+
+[CODE] # Python: List comprehension
+numbers = [1, 2, 3, 4, 5]
+squared = [x**2 for x in numbers]
+print(squared)
+
+
+[CODE] # Python: File reading
+with open('file.txt', 'r') as f:
+    content = f.read()
+    print(content)
+
+
+[CODE] # Python: Function
+def add_numbers(a, b):
+    return a + b
+
+result = add_numbers(5, 3)
+print(result)
+
+
+[CODE] # Python: Function
+def add_numbers(a, b):
+    return a + b
+
+result = add_numbers(5, 3)
+print(result)
+
+
+[CODE] # Python: Dictionaries
+person = {
+    "name": "Bob",
+    "age": 30,
+    "city": "New York"
+}
+print(person["name"])
+
+
+[CODE] # Python: List comprehension
+numbers = [1, 2, 3, 4, 5]
+squared = [x**2 for x in numbers]
+print(squared)
+
+
+[CODE] # Python: While loop
+count = 0
+while count < 5:
+    print(count)
+    count += 1
+
+
+[CODE] # Python: For loop
+for i in range(5):
+    print(f"Count: {i}")
+
+
+[CODE] # Python: For loop
+for i in range(5):
+    print(f"Count: {i}")
+
+
+[CODE] # Python: Dictionaries
+person = {
+    "name": "Bob",
+    "age": 30,
+    "city": "New York"
+}
+print(person["name"])
+
+
+[CODE] # Python: List comprehension
+numbers = [1, 2, 3, 4, 5]
+squared = [x**2 for x in numbers]
+print(squared)
+
+
+[CODE] # Python: While loop
+count = 0
+while count < 5:
+    print(count)
+    count += 1
+
+
+[CODE] # Python: Function
+def add_numbers(a, b):
+    return a + b
+
+result = add_numbers(5, 3)
+print(result)
+
+
+[CODE] # Python: Variables and types
+name = "Alice"
+age = 25
+height = 5.6
+is_student = True
+
+
+[CODE] # Python: List comprehension
+numbers = [1, 2, 3, 4, 5]
+squared = [x**2 for x in numbers]
+print(squared)
+
+
+[CODE] # Python: Class
+class Dog:
+    def __init__(self, name):
+        self.name = name
+    
+    def bark(self):
+        print(f"{self.name} says Woof!")
+
+my_dog = Dog("Buddy")
+my_dog.bark()
+
+
+[CODE] # Python: Variables and types
+name = "Alice"
+age = 25
+height = 5.6
+is_student = True
+
+
+[CODE] # Python: Class
+class Dog:
+    def __init__(self, name):
+        self.name = name
+    
+    def bark(self):
+        print(f"{self.name} says Woof!")
+
+my_dog = Dog("Buddy")
+my_dog.bark()
+
+
+[CODE] # Python: Variables and types
+name = "Alice"
+age = 25
+height = 5.6
+is_student = True
+
+
+[CODE] # Python: Lists
+fruits = ["apple", "banana", "cherry"]
+fruits.append("orange")
+print(fruits[0])
+print(len(fruits))
+
+
+[CODE] # Python: File reading
+with open('file.txt', 'r') as f:
+    content = f.read()
+    print(content)
+
+
+[CODE] # Python: Print Hello World
+print("Hello, World!")
+
+
+[CODE] # Python: Function
+def add_numbers(a, b):
+    return a + b
+
+result = add_numbers(5, 3)
+print(result)
+
+
+[CODE] # Python: Variables and types
+name = "Alice"
+age = 25
+height = 5.6
+is_student = True
+
+
+[CODE] # Python: Function
+def add_numbers(a, b):
+    return a + b
+
+result = add_numbers(5, 3)
+print(result)
+
+
+[CODE] # Python: Function
+def add_numbers(a, b):
+    return a + b
+
+result = add_numbers(5, 3)
+print(result)
+
+
+[CODE] # Python: Dictionaries
+person = {
+    "name": "Bob",
+    "age": 30,
+    "city": "New York"
+}
+print(person["name"])
+
+
+[CODE] # Python: Print Hello World
+print("Hello, World!")
+
+
+[CODE] # Python: Class
+class Dog:
+    def __init__(self, name):
+        self.name = name
+    
+    def bark(self):
+        print(f"{self.name} says Woof!")
+
+my_dog = Dog("Buddy")
+my_dog.bark()
+
+
+[CODE] # Python: Print Hello World
+print("Hello, World!")
+
+
+[CODE] # Python: Variables and types
+name = "Alice"
+age = 25
+height = 5.6
+is_student = True
+
+
+[CODE] # Python: Dictionaries
+person = {
+    "name": "Bob",
+    "age": 30,
+    "city": "New York"
+}
+print(person["name"])
+
+
+[CODE] # Python: Dictionaries
+person = {
+    "name": "Bob",
+    "age": 30,
+    "city": "New York"
+}
+print(person["name"])
+
+
+[CODE] # Python: Print Hello World
+print("Hello, World!")
+
+
+[CODE] # Python: For loop
+for i in range(5):
+    print(f"Count: {i}")
+
+
+[CODE] # Python: Lists
+fruits = ["apple", "banana", "cherry"]
+fruits.append("orange")
+print(fruits[0])
+print(len(fruits))
+
+
+[CODE] # Python: Variables and types
+name = "Alice"
+age = 25
+height = 5.6
+is_student = True
+
+
+[CODE] # Python: Function
+def add_numbers(a, b):
+    return a + b
+
+result = add_numbers(5, 3)
+print(result)
+
+
+[CODE] # Python: Function
+def add_numbers(a, b):
+    return a + b
+
+result = add_numbers(5, 3)
+print(result)
+
+
+[CODE] # Python: Class
+class Dog:
+    def __init__(self, name):
+        self.name = name
+    
+    def bark(self):
+        print(f"{self.name} says Woof!")
+
+my_dog = Dog("Buddy")
+my_dog.bark()
+
+
+[CODE] # Python: Function
+def add_numbers(a, b):
+    return a + b
+
+result = add_numbers(5, 3)
+print(result)
+
+
+[CODE] # Python: While loop
+count = 0
+while count < 5:
+    print(count)
+    count += 1
+
+
+[CODE] # Python: Function
+def add_numbers(a, b):
+    return a + b
+
+result = add_numbers(5, 3)
+print(result)
+
+
+[CODE] # Python: Function
+def add_numbers(a, b):
+    return a + b
+
+result = add_numbers(5, 3)
+print(result)
+
+
+[CODE] # Python: List comprehension
+numbers = [1, 2, 3, 4, 5]
+squared = [x**2 for x in numbers]
+print(squared)
+
+
+[CODE] # Python: While loop
+count = 0
+while count < 5:
+    print(count)
+    count += 1
+
+
+[CODE] # Python: Dictionaries
+person = {
+    "name": "Bob",
+    "age": 30,
+    "city": "New York"
+}
+print(person["name"])
+
+
+[CODE] # Python: Lists
+fruits = ["apple", "banana", "cherry"]
+fruits.append("orange")
+print(fruits[0])
+print(len(fruits))
+
+
+[CODE] # Python: Variables and types
+name = "Alice"
+age = 25
+height = 5.6
+is_student = True
+
+
+[CODE] # Python: Lists
+fruits = ["apple", "banana", "cherry"]
+fruits.append("orange")
+print(fruits[0])
+print(len(fruits))
+
+
+[CODE] # Python: Lists
+fruits = ["apple", "banana", "cherry"]
+fruits.append("orange")
+print(fruits[0])
+print(len(fruits))
+
+
+[CODE] # Python: File reading
+with open('file.txt', 'r') as f:
+    content = f.read()
+    print(content)
+
+
+[CODE] # Python: File reading
+with open('file.txt', 'r') as f:
+    content = f.read()
+    print(content)
+
+
+[CODE] # Python: For loop
+for i in range(5):
+    print(f"Count: {i}")
+
+
+[CODE] # Python: Dictionaries
+person = {
+    "name": "Bob",
+    "age": 30,
+    "city": "New York"
+}
+print(person["name"])
+
+
+[CODE] # Python: Lists
+fruits = ["apple", "banana", "cherry"]
+fruits.append("orange")
+print(fruits[0])
+print(len(fruits))
+
+
+[CODE] # Python: Dictionaries
+person = {
+    "name": "Bob",
+    "age": 30,
+    "city": "New York"
+}
+print(person["name"])
+
+
+[CODE] # Python: Dictionaries
+person = {
+    "name": "Bob",
+    "age": 30,
+    "city": "New York"
+}
+print(person["name"])
+
+
+[CODE] # Python: While loop
+count = 0
+while count < 5:
+    print(count)
+    count += 1
+
+
+[CODE] # Python: Print Hello World
+print("Hello, World!")
+
+
+[CODE] # Python: Variables and types
+name = "Alice"
+age = 25
+height = 5.6
+is_student = True
+
+
+[CODE] # Python: Function
+def add_numbers(a, b):
+    return a + b
+
+result = add_numbers(5, 3)
+print(result)
+
+
+[CODE] # Python: For loop
+for i in range(5):
+    print(f"Count: {i}")
+
+
+[CODE] # Python: For loop
+for i in range(5):
+    print(f"Count: {i}")
+
+
+[CODE] # Python: Print Hello World
+print("Hello, World!")
+
+
+[CODE] # Python: While loop
+count = 0
+while count < 5:
+    print(count)
+    count += 1
+
+
+[CODE] # Python: Function
+def add_numbers(a, b):
+    return a + b
+
+result = add_numbers(5, 3)
+print(result)
+
+
+[CODE] # Python: For loop
+for i in range(5):
+    print(f"Count: {i}")
+
+
+[CODE] # Python: List comprehension
+numbers = [1, 2, 3, 4, 5]
+squared = [x**2 for x in numbers]
+print(squared)
+
+
+[CODE] # Python: Function
+def add_numbers(a, b):
+    return a + b
+
+result = add_numbers(5, 3)
+print(result)
+
+
+[CODE] # Python: While loop
+count = 0
+while count < 5:
+    print(count)
+    count += 1
+
+
+[CODE] # Python: Print Hello World
+print("Hello, World!")
+
+
+[CODE] # Python: For loop
+for i in range(5):
+    print(f"Count: {i}")
+
+
+[CODE] # Python: While loop
+count = 0
+while count < 5:
+    print(count)
+    count += 1
+
+
+[CODE] # Python: Function
+def add_numbers(a, b):
+    return a + b
+
+result = add_numbers(5, 3)
+print(result)
+
+
+[CODE] # Python: List comprehension
+numbers = [1, 2, 3, 4, 5]
+squared = [x**2 for x in numbers]
+print(squared)
+
+
+[CODE] # Python: Lists
+fruits = ["apple", "banana", "cherry"]
+fruits.append("orange")
+print(fruits[0])
+print(len(fruits))
+
+
+[CODE] # Python: Class
+class Dog:
+    def __init__(self, name):
+        self.name = name
+    
+    def bark(self):
+        print(f"{self.name} says Woof!")
+
+my_dog = Dog("Buddy")
+my_dog.bark()
+
+
+[CODE] # Python: File reading
+with open('file.txt', 'r') as f:
+    content = f.read()
+    print(content)
+
+
+[CODE] # Python: Variables and types
+name = "Alice"
+age = 25
+height = 5.6
+is_student = True
+
+
+[CODE] # Python: File reading
+with open('file.txt', 'r') as f:
+    content = f.read()
+    print(content)
+
+
+[CODE] # Python: List comprehension
+numbers = [1, 2, 3, 4, 5]
+squared = [x**2 for x in numbers]
+print(squared)
+
+
+[CODE] # Python: While loop
+count = 0
+while count < 5:
+    print(count)
+    count += 1
+
+
+[CODE] # Python: For loop
+for i in range(5):
+    print(f"Count: {i}")
+
+
+[CODE] # Python: Class
+class Dog:
+    def __init__(self, name):
+        self.name = name
+    
+    def bark(self):
+        print(f"{self.name} says Woof!")
+
+my_dog = Dog("Buddy")
+my_dog.bark()
+
+
+[CODE] # Python: Lists
+fruits = ["apple", "banana", "cherry"]
+fruits.append("orange")
+print(fruits[0])
+print(len(fruits))
+
+
+[CODE] # Python: While loop
+count = 0
+while count < 5:
+    print(count)
+    count += 1
+
+
+[CODE] # Python: Variables and types
+name = "Alice"
+age = 25
+height = 5.6
+is_student = True
+
+
+[CODE] # Python: For loop
+for i in range(5):
+    print(f"Count: {i}")
+
+
+[CODE] # Python: Variables and types
+name = "Alice"
+age = 25
+height = 5.6
+is_student = True
+
+
+[CODE] # Python: While loop
+count = 0
+while count < 5:
+    print(count)
+    count += 1
+
+
+[CODE] # Python: While loop
+count = 0
+while count < 5:
+    print(count)
+    count += 1
+
+
+[CODE] # Python: List comprehension
+numbers = [1, 2, 3, 4, 5]
+squared = [x**2 for x in numbers]
+print(squared)
+
+
+[CODE] # Python: While loop
+count = 0
+while count < 5:
+    print(count)
+    count += 1
+
+
+[CODE] # Python: For loop
+for i in range(5):
+    print(f"Count: {i}")
+
+
+[CODE] # Python: For loop
+for i in range(5):
+    print(f"Count: {i}")
+
+
+[CODE] # Python: While loop
+count = 0
+while count < 5:
+    print(count)
+    count += 1
+
+
+[CODE] # Python: Variables and types
+name = "Alice"
+age = 25
+height = 5.6
+is_student = True
+
+
+[CODE] # Python: Dictionaries
+person = {
+    "name": "Bob",
+    "age": 30,
+    "city": "New York"
+}
+print(person["name"])
+
+
+[CODE] # Python: Dictionaries
+person = {
+    "name": "Bob",
+    "age": 30,
+    "city": "New York"
+}
+print(person["name"])
+
+
+[CODE] # Python: File reading
+with open('file.txt', 'r') as f:
+    content = f.read()
+    print(content)
+
+
+[CODE] # Python: Dictionaries
+person = {
+    "name": "Bob",
+    "age": 30,
+    "city": "New York"
+}
+print(person["name"])
+
+
+[CODE] # Python: For loop
+for i in range(5):
+    print(f"Count: {i}")
+
+
+[CODE] # Python: Function
+def add_numbers(a, b):
+    return a + b
+
+result = add_numbers(5, 3)
+print(result)
+
+
+[CODE] # Python: Class
+class Dog:
+    def __init__(self, name):
+        self.name = name
+    
+    def bark(self):
+        print(f"{self.name} says Woof!")
+
+my_dog = Dog("Buddy")
+my_dog.bark()
+
+
+[CODE] # Python: Class
+class Dog:
+    def __init__(self, name):
+        self.name = name
+    
+    def bark(self):
+        print(f"{self.name} says Woof!")
+
+my_dog = Dog("Buddy")
+my_dog.bark()
+
+
+[CODE] # Python: While loop
+count = 0
+while count < 5:
+    print(count)
+    count += 1
+
+
+[CODE] # Python: While loop
+count = 0
+while count < 5:
+    print(count)
+    count += 1
+
+
+[CODE] # Python: While loop
+count = 0
+while count < 5:
+    print(count)
+    count += 1
+
+
+[CODE] # Python: Function
+def add_numbers(a, b):
+    return a + b
+
+result = add_numbers(5, 3)
+print(result)
+
+
+[CODE] # Python: Variables and types
+name = "Alice"
+age = 25
+height = 5.6
+is_student = True
+
+
+[CODE] # Python: Function
+def add_numbers(a, b):
+    return a + b
+
+result = add_numbers(5, 3)
+print(result)
+
+
+[CODE] # Python: While loop
+count = 0
+while count < 5:
+    print(count)
+    count += 1
+
+
+[CODE] # Python: For loop
+for i in range(5):
+    print(f"Count: {i}")
+
+
+[CODE] # Python: File reading
+with open('file.txt', 'r') as f:
+    content = f.read()
+    print(content)
+
+
+[CODE] # Python: Variables and types
+name = "Alice"
+age = 25
+height = 5.6
+is_student = True
+
+
+[CODE] # Python: File reading
+with open('file.txt', 'r') as f:
+    content = f.read()
+    print(content)
+
+
+[CODE] # Python: Lists
+fruits = ["apple", "banana", "cherry"]
+fruits.append("orange")
+print(fruits[0])
+print(len(fruits))
+
+
+[CODE] # Python: Dictionaries
+person = {
+    "name": "Bob",
+    "age": 30,
+    "city": "New York"
+}
+print(person["name"])
+
+
+[CODE] # Python: List comprehension
+numbers = [1, 2, 3, 4, 5]
+squared = [x**2 for x in numbers]
+print(squared)
+
+
+[CODE] # Python: Lists
+fruits = ["apple", "banana", "cherry"]
+fruits.append("orange")
+print(fruits[0])
+print(len(fruits))
+
+
+[CODE] # Python: Dictionaries
+person = {
+    "name": "Bob",
+    "age": 30,
+    "city": "New York"
+}
+print(person["name"])
+
+
+[CODE] # Python: Variables and types
+name = "Alice"
+age = 25
+height = 5.6
+is_student = True
+
+
+[CODE] # Python: Print Hello World
+print("Hello, World!")
+
+
+[CODE] # Python: For loop
+for i in range(5):
+    print(f"Count: {i}")
+
+
+[CODE] # Python: Lists
+fruits = ["apple", "banana", "cherry"]
+fruits.append("orange")
+print(fruits[0])
+print(len(fruits))
+
+
+[CODE] # Python: For loop
+for i in range(5):
+    print(f"Count: {i}")
+
+
+[CODE] # Python: Print Hello World
+print("Hello, World!")
+
+
+[CODE] # Python: Class
+class Dog:
+    def __init__(self, name):
+        self.name = name
+    
+    def bark(self):
+        print(f"{self.name} says Woof!")
+
+my_dog = Dog("Buddy")
+my_dog.bark()
+
+
+[CODE] # Python: For loop
+for i in range(5):
+    print(f"Count: {i}")
+
+
+[CODE] # Python: Function
+def add_numbers(a, b):
+    return a + b
+
+result = add_numbers(5, 3)
+print(result)
+
+
+[CODE] # Python: Dictionaries
+person = {
+    "name": "Bob",
+    "age": 30,
+    "city": "New York"
+}
+print(person["name"])
+
+
+[CODE] # Python: For loop
+for i in range(5):
+    print(f"Count: {i}")
+
+
+[CODE] # Python: Dictionaries
+person = {
+    "name": "Bob",
+    "age": 30,
+    "city": "New York"
+}
+print(person["name"])
+
+
+[CODE] # Python: Dictionaries
+person = {
+    "name": "Bob",
+    "age": 30,
+    "city": "New York"
+}
+print(person["name"])
+
+
+[CODE] # Python: Dictionaries
+person = {
+    "name": "Bob",
+    "age": 30,
+    "city": "New York"
+}
+print(person["name"])
+
+
+[CODE] # Python: Function
+def add_numbers(a, b):
+    return a + b
+
+result = add_numbers(5, 3)
+print(result)
+
+
+[CODE] # Python: List comprehension
+numbers = [1, 2, 3, 4, 5]
+squared = [x**2 for x in numbers]
+print(squared)
+
+
+[CODE] # Python: Print Hello World
+print("Hello, World!")
+
+
+[CODE] # Python: Class
+class Dog:
+    def __init__(self, name):
+        self.name = name
+    
+    def bark(self):
+        print(f"{self.name} says Woof!")
+
+my_dog = Dog("Buddy")
+my_dog.bark()
+
+
+[CODE] # Python: For loop
+for i in range(5):
+    print(f"Count: {i}")
+
+
+[CODE] # Python: Dictionaries
+person = {
+    "name": "Bob",
+    "age": 30,
+    "city": "New York"
+}
+print(person["name"])
+
+
+[CODE] # Python: Lists
+fruits = ["apple", "banana", "cherry"]
+fruits.append("orange")
+print(fruits[0])
+print(len(fruits))
+
+
+[CODE] # Python: Dictionaries
+person = {
+    "name": "Bob",
+    "age": 30,
+    "city": "New York"
+}
+print(person["name"])
+
+
+[CODE] # Python: File reading
+with open('file.txt', 'r') as f:
+    content = f.read()
+    print(content)
+
+
+[CODE] # Python: Variables and types
+name = "Alice"
+age = 25
+height = 5.6
+is_student = True
+
+
+[CODE] # Python: List comprehension
+numbers = [1, 2, 3, 4, 5]
+squared = [x**2 for x in numbers]
+print(squared)
+
+
+[CODE] # Python: Variables and types
+name = "Alice"
+age = 25
+height = 5.6
+is_student = True
+
+
+[CODE] # Python: Lists
+fruits = ["apple", "banana", "cherry"]
+fruits.append("orange")
+print(fruits[0])
+print(len(fruits))
+
+
+[CODE] # Python: For loop
+for i in range(5):
+    print(f"Count: {i}")
+
+
+[CODE] # Python: For loop
+for i in range(5):
+    print(f"Count: {i}")
+
+
+[CODE] # Python: For loop
+for i in range(5):
+    print(f"Count: {i}")
+
+
+[CODE] # Python: Function
+def add_numbers(a, b):
+    return a + b
+
+result = add_numbers(5, 3)
+print(result)
+
+
+[CODE] # Python: Function
+def add_numbers(a, b):
+    return a + b
+
+result = add_numbers(5, 3)
+print(result)
+
+
+[CODE] # Python: List comprehension
+numbers = [1, 2, 3, 4, 5]
+squared = [x**2 for x in numbers]
+print(squared)
+
+
+[CODE] # Python: While loop
+count = 0
+while count < 5:
+    print(count)
+    count += 1
+
+
+[CODE] # Python: Print Hello World
+print("Hello, World!")
+
+
+[CODE] # Python: Function
+def add_numbers(a, b):
+    return a + b
+
+result = add_numbers(5, 3)
+print(result)
+
+
+[CODE] # Python: Class
+class Dog:
+    def __init__(self, name):
+        self.name = name
+    
+    def bark(self):
+        print(f"{self.name} says Woof!")
+
+my_dog = Dog("Buddy")
+my_dog.bark()
+
+
+[CODE] # Python: Variables and types
+name = "Alice"
+age = 25
+height = 5.6
+is_student = True
+
+
+[CODE] # Python: Print Hello World
+print("Hello, World!")
+
+
+[CODE] # Python: Function
+def add_numbers(a, b):
+    return a + b
+
+result = add_numbers(5, 3)
+print(result)
+
+
+[CODE] # Python: Dictionaries
+person = {
+    "name": "Bob",
+    "age": 30,
+    "city": "New York"
+}
+print(person["name"])
+
+
+[CODE] # Python: Variables and types
+name = "Alice"
+age = 25
+height = 5.6
+is_student = True
+
+
+[CODE] # Python: File reading
+with open('file.txt', 'r') as f:
+    content = f.read()
+    print(content)
+
+
+[CODE] # Python: Lists
+fruits = ["apple", "banana", "cherry"]
+fruits.append("orange")
+print(fruits[0])
+print(len(fruits))
+
+
+[CODE] # Python: List comprehension
+numbers = [1, 2, 3, 4, 5]
+squared = [x**2 for x in numbers]
+print(squared)
+
+
+[CODE] # Python: While loop
+count = 0
+while count < 5:
+    print(count)
+    count += 1
+
+
+[CODE] # Python: File reading
+with open('file.txt', 'r') as f:
+    content = f.read()
+    print(content)
+
+
+[CODE] # Python: While loop
+count = 0
+while count < 5:
+    print(count)
+    count += 1
+
+
+[CODE] # Python: Variables and types
+name = "Alice"
+age = 25
+height = 5.6
+is_student = True
+
+
+[CODE] # Python: For loop
+for i in range(5):
+    print(f"Count: {i}")
+
+
+[CODE] # Python: Dictionaries
+person = {
+    "name": "Bob",
+    "age": 30,
+    "city": "New York"
+}
+print(person["name"])
+
+
+[CODE] # Python: File reading
+with open('file.txt', 'r') as f:
+    content = f.read()
+    print(content)
+
+
+[CODE] # Python: Print Hello World
+print("Hello, World!")
+
+
+[CODE] # Python: File reading
+with open('file.txt', 'r') as f:
+    content = f.read()
+    print(content)
+
+
+[CODE] # Python: For loop
+for i in range(5):
+    print(f"Count: {i}")
+
+
+[CODE] # Python: Class
+class Dog:
+    def __init__(self, name):
+        self.name = name
+    
+    def bark(self):
+        print(f"{self.name} says Woof!")
+
+my_dog = Dog("Buddy")
+my_dog.bark()
+
+
+[CODE] # Python: List comprehension
+numbers = [1, 2, 3, 4, 5]
+squared = [x**2 for x in numbers]
+print(squared)
+
+
+[CODE] # Python: File reading
+with open('file.txt', 'r') as f:
+    content = f.read()
+    print(content)
+
+
+[CODE] # Python: For loop
+for i in range(5):
+    print(f"Count: {i}")
+
+
+[CODE] # Python: Print Hello World
+print("Hello, World!")
+
+
+[CODE] # Python: List comprehension
+numbers = [1, 2, 3, 4, 5]
+squared = [x**2 for x in numbers]
+print(squared)
+
+
+[CODE] # Python: For loop
+for i in range(5):
+    print(f"Count: {i}")
+
+
+[CODE] # Python: Lists
+fruits = ["apple", "banana", "cherry"]
+fruits.append("orange")
+print(fruits[0])
+print(len(fruits))
+
+
+[CODE] # Python: List comprehension
+numbers = [1, 2, 3, 4, 5]
+squared = [x**2 for x in numbers]
+print(squared)
+
+
+[CODE] # Python: For loop
+for i in range(5):
+    print(f"Count: {i}")
+
+
+[CODE] # Python: Class
+class Dog:
+    def __init__(self, name):
+        self.name = name
+    
+    def bark(self):
+        print(f"{self.name} says Woof!")
+
+my_dog = Dog("Buddy")
+my_dog.bark()
+
+
+[CODE] # Python: Print Hello World
+print("Hello, World!")
+
+
+[CODE] # Python: Lists
+fruits = ["apple", "banana", "cherry"]
+fruits.append("orange")
+print(fruits[0])
+print(len(fruits))
+
+
+[CODE] # Python: For loop
+for i in range(5):
+    print(f"Count: {i}")
+
+
+[CODE] # Python: While loop
+count = 0
+while count < 5:
+    print(count)
+    count += 1
+
+
+[CODE] # Python: Variables and types
+name = "Alice"
+age = 25
+height = 5.6
+is_student = True
+
+
+[CODE] # Python: Function
+def add_numbers(a, b):
+    return a + b
+
+result = add_numbers(5, 3)
+print(result)
+
+
+[CODE] # Python: Variables and types
+name = "Alice"
+age = 25
+height = 5.6
+is_student = True
+
+
+[CODE] # Python: List comprehension
+numbers = [1, 2, 3, 4, 5]
+squared = [x**2 for x in numbers]
+print(squared)
+
+
+[CODE] # Python: Class
+class Dog:
+    def __init__(self, name):
+        self.name = name
+    
+    def bark(self):
+        print(f"{self.name} says Woof!")
+
+my_dog = Dog("Buddy")
+my_dog.bark()
+
+
+[CODE] # Python: Lists
+fruits = ["apple", "banana", "cherry"]
+fruits.append("orange")
+print(fruits[0])
+print(len(fruits))
+
+
+[CODE] # Python: While loop
+count = 0
+while count < 5:
+    print(count)
+    count += 1
+
+
+[CODE] # Python: Dictionaries
+person = {
+    "name": "Bob",
+    "age": 30,
+    "city": "New York"
+}
+print(person["name"])
+
+
+[CODE] # Python: Lists
+fruits = ["apple", "banana", "cherry"]
+fruits.append("orange")
+print(fruits[0])
+print(len(fruits))
+
+
+[CODE] # Python: Class
+class Dog:
+    def __init__(self, name):
+        self.name = name
+    
+    def bark(self):
+        print(f"{self.name} says Woof!")
+
+my_dog = Dog("Buddy")
+my_dog.bark()
+
+
+[CODE] # Python: File reading
+with open('file.txt', 'r') as f:
+    content = f.read()
+    print(content)
+
+
+[CODE] # Python: Function
+def add_numbers(a, b):
+    return a + b
+
+result = add_numbers(5, 3)
+print(result)
+
+
+[CODE] # Python: Dictionaries
+person = {
+    "name": "Bob",
+    "age": 30,
+    "city": "New York"
+}
+print(person["name"])
+
+
+[CODE] # Python: Class
+class Dog:
+    def __init__(self, name):
+        self.name = name
+    
+    def bark(self):
+        print(f"{self.name} says Woof!")
+
+my_dog = Dog("Buddy")
+my_dog.bark()
+
+
+[CODE] # Python: Class
+class Dog:
+    def __init__(self, name):
+        self.name = name
+    
+    def bark(self):
+        print(f"{self.name} says Woof!")
+
+my_dog = Dog("Buddy")
+my_dog.bark()
+
+
+[CODE] # Python: Function
+def add_numbers(a, b):
+    return a + b
+
+result = add_numbers(5, 3)
+print(result)
+
+
+[CODE] # Python: Dictionaries
+person = {
+    "name": "Bob",
+    "age": 30,
+    "city": "New York"
+}
+print(person["name"])
+
+
+[CODE] # Python: For loop
+for i in range(5):
+    print(f"Count: {i}")
+
+
+[CODE] # Python: Class
+class Dog:
+    def __init__(self, name):
+        self.name = name
+    
+    def bark(self):
+        print(f"{self.name} says Woof!")
+
+my_dog = Dog("Buddy")
+my_dog.bark()
+
+
+[CODE] # Python: Class
+class Dog:
+    def __init__(self, name):
+        self.name = name
+    
+    def bark(self):
+        print(f"{self.name} says Woof!")
+
+my_dog = Dog("Buddy")
+my_dog.bark()
+
+
+[CODE] # Python: Variables and types
+name = "Alice"
+age = 25
+height = 5.6
+is_student = True
+
+
+[CODE] # Python: List comprehension
+numbers = [1, 2, 3, 4, 5]
+squared = [x**2 for x in numbers]
+print(squared)
+
+
+[CODE] # Python: For loop
+for i in range(5):
+    print(f"Count: {i}")
+
+
+[CODE] # Python: Class
+class Dog:
+    def __init__(self, name):
+        self.name = name
+    
+    def bark(self):
+        print(f"{self.name} says Woof!")
+
+my_dog = Dog("Buddy")
+my_dog.bark()
+
+
+[CODE] # Python: Dictionaries
+person = {
+    "name": "Bob",
+    "age": 30,
+    "city": "New York"
+}
+print(person["name"])
+
+
+[CODE] # Python: Print Hello World
+print("Hello, World!")
+
+
+[CODE] # Python: Function
+def add_numbers(a, b):
+    return a + b
+
+result = add_numbers(5, 3)
+print(result)
+
+
+[CODE] # Python: Variables and types
+name = "Alice"
+age = 25
+height = 5.6
+is_student = True
+
+
+[CODE] # Python: Dictionaries
+person = {
+    "name": "Bob",
+    "age": 30,
+    "city": "New York"
+}
+print(person["name"])
+
+
+[CODE] # Python: For loop
+for i in range(5):
+    print(f"Count: {i}")
+
+
+[CODE] # Python: File reading
+with open('file.txt', 'r') as f:
+    content = f.read()
+    print(content)
+
+
+[CODE] # Python: Lists
+fruits = ["apple", "banana", "cherry"]
+fruits.append("orange")
+print(fruits[0])
+print(len(fruits))
+
+
+[CODE] # Python: List comprehension
+numbers = [1, 2, 3, 4, 5]
+squared = [x**2 for x in numbers]
+print(squared)
+
+
+[CODE] # Python: Dictionaries
+person = {
+    "name": "Bob",
+    "age": 30,
+    "city": "New York"
+}
+print(person["name"])
+
+
+[CODE] # Python: While loop
+count = 0
+while count < 5:
+    print(count)
+    count += 1
+
+
+[CODE] # Python: Dictionaries
+person = {
+    "name": "Bob",
+    "age": 30,
+    "city": "New York"
+}
+print(person["name"])
+
+
+[CODE] # Python: Function
+def add_numbers(a, b):
+    return a + b
+
+result = add_numbers(5, 3)
+print(result)
+
+
+[CODE] # Python: For loop
+for i in range(5):
+    print(f"Count: {i}")
+
+
+[CODE] # Python: While loop
+count = 0
+while count < 5:
+    print(count)
+    count += 1
+
+
+[CODE] # Python: Class
+class Dog:
+    def __init__(self, name):
+        self.name = name
+    
+    def bark(self):
+        print(f"{self.name} says Woof!")
+
+my_dog = Dog("Buddy")
+my_dog.bark()
+
+
+[CODE] # Python: File reading
+with open('file.txt', 'r') as f:
+    content = f.read()
+    print(content)
+
+
+[CODE] # Python: Print Hello World
+print("Hello, World!")
+
+
+[CODE] # Python: Function
+def add_numbers(a, b):
+    return a + b
+
+result = add_numbers(5, 3)
+print(result)
+
+
+[CODE] # Python: Function
+def add_numbers(a, b):
+    return a + b
+
+result = add_numbers(5, 3)
+print(result)
+
+
+[CODE] # Python: While loop
+count = 0
+while count < 5:
+    print(count)
+    count += 1
+
+
+[CODE] # Python: Class
+class Dog:
+    def __init__(self, name):
+        self.name = name
+    
+    def bark(self):
+        print(f"{self.name} says Woof!")
+
+my_dog = Dog("Buddy")
+my_dog.bark()
+
+
+[CODE] # Python: List comprehension
+numbers = [1, 2, 3, 4, 5]
+squared = [x**2 for x in numbers]
+print(squared)
+
+
+[CODE] # Python: List comprehension
+numbers = [1, 2, 3, 4, 5]
+squared = [x**2 for x in numbers]
+print(squared)
+
+
+[CODE] # Python: Print Hello World
+print("Hello, World!")
+
+
+[CODE] # Python: Dictionaries
+person = {
+    "name": "Bob",
+    "age": 30,
+    "city": "New York"
+}
+print(person["name"])
+
+
+[CODE] # Python: List comprehension
+numbers = [1, 2, 3, 4, 5]
+squared = [x**2 for x in numbers]
+print(squared)
+
+
+[CODE] # Python: Class
+class Dog:
+    def __init__(self, name):
+        self.name = name
+    
+    def bark(self):
+        print(f"{self.name} says Woof!")
+
+my_dog = Dog("Buddy")
+my_dog.bark()
+
+
+[CODE] # Python: Dictionaries
+person = {
+    "name": "Bob",
+    "age": 30,
+    "city": "New York"
+}
+print(person["name"])
+
+
+[CODE] # Python: Print Hello World
+print("Hello, World!")
+
+
+[CODE] # Python: Lists
+fruits = ["apple", "banana", "cherry"]
+fruits.append("orange")
+print(fruits[0])
+print(len(fruits))
+
+
+[CODE] # Python: Variables and types
+name = "Alice"
+age = 25
+height = 5.6
+is_student = True
+
+
+[CODE] # Python: Variables and types
+name = "Alice"
+age = 25
+height = 5.6
+is_student = True
+
+
+[CODE] # Python: Class
+class Dog:
+    def __init__(self, name):
+        self.name = name
+    
+    def bark(self):
+        print(f"{self.name} says Woof!")
+
+my_dog = Dog("Buddy")
+my_dog.bark()
+
+
+[CODE] # Python: List comprehension
+numbers = [1, 2, 3, 4, 5]
+squared = [x**2 for x in numbers]
+print(squared)
+
+
+[CODE] # Python: Class
+class Dog:
+    def __init__(self, name):
+        self.name = name
+    
+    def bark(self):
+        print(f"{self.name} says Woof!")
+
+my_dog = Dog("Buddy")
+my_dog.bark()
+
+
+[CODE] # Python: Lists
+fruits = ["apple", "banana", "cherry"]
+fruits.append("orange")
+print(fruits[0])
+print(len(fruits))
+
+
+[CODE] # Python: Dictionaries
+person = {
+    "name": "Bob",
+    "age": 30,
+    "city": "New York"
+}
+print(person["name"])
+
+
+[CODE] # Python: Function
+def add_numbers(a, b):
+    return a + b
+
+result = add_numbers(5, 3)
+print(result)
+
+
+[CODE] # Python: Function
+def add_numbers(a, b):
+    return a + b
+
+result = add_numbers(5, 3)
+print(result)
+
+
+[CODE] # Python: List comprehension
+numbers = [1, 2, 3, 4, 5]
+squared = [x**2 for x in numbers]
+print(squared)
+
+
+[CODE] # Python: File reading
+with open('file.txt', 'r') as f:
+    content = f.read()
+    print(content)
+
+
+[CODE] # Python: Variables and types
+name = "Alice"
+age = 25
+height = 5.6
+is_student = True
+
+
+[CODE] # Python: Print Hello World
+print("Hello, World!")
+
+
+[CODE] # Python: Class
+class Dog:
+    def __init__(self, name):
+        self.name = name
+    
+    def bark(self):
+        print(f"{self.name} says Woof!")
+
+my_dog = Dog("Buddy")
+my_dog.bark()
+
+
+[CODE] # Python: For loop
+for i in range(5):
+    print(f"Count: {i}")
+
+
+[CODE] # Python: List comprehension
+numbers = [1, 2, 3, 4, 5]
+squared = [x**2 for x in numbers]
+print(squared)
+
+
+[CODE] # Python: List comprehension
+numbers = [1, 2, 3, 4, 5]
+squared = [x**2 for x in numbers]
+print(squared)
+
+
+[CODE] # Python: List comprehension
+numbers = [1, 2, 3, 4, 5]
+squared = [x**2 for x in numbers]
+print(squared)
+
+
+[CODE] # Python: Dictionaries
+person = {
+    "name": "Bob",
+    "age": 30,
+    "city": "New York"
+}
+print(person["name"])
+
+
+[CODE] # Python: Variables and types
+name = "Alice"
+age = 25
+height = 5.6
+is_student = True
+
+
+[CODE] # Python: For loop
+for i in range(5):
+    print(f"Count: {i}")
+
+
+[CODE] # Python: Dictionaries
+person = {
+    "name": "Bob",
+    "age": 30,
+    "city": "New York"
+}
+print(person["name"])
+
+
+[CODE] # Python: Print Hello World
+print("Hello, World!")
+
+
+[CODE] # Python: Lists
+fruits = ["apple", "banana", "cherry"]
+fruits.append("orange")
+print(fruits[0])
+print(len(fruits))
+
+
+[CODE] # Python: While loop
+count = 0
+while count < 5:
+    print(count)
+    count += 1
+
+
+[CODE] # Python: Lists
+fruits = ["apple", "banana", "cherry"]
+fruits.append("orange")
+print(fruits[0])
+print(len(fruits))
+
+
+[CODE] # Python: For loop
+for i in range(5):
+    print(f"Count: {i}")
+
+
+[CODE] # Python: List comprehension
+numbers = [1, 2, 3, 4, 5]
+squared = [x**2 for x in numbers]
+print(squared)
+
+
+[CODE] # Python: Variables and types
+name = "Alice"
+age = 25
+height = 5.6
+is_student = True
+
+
+[CODE] # Python: List comprehension
+numbers = [1, 2, 3, 4, 5]
+squared = [x**2 for x in numbers]
+print(squared)
+
+
+[CODE] # Python: Class
+class Dog:
+    def __init__(self, name):
+        self.name = name
+    
+    def bark(self):
+        print(f"{self.name} says Woof!")
+
+my_dog = Dog("Buddy")
+my_dog.bark()
+
+
+[CODE] # Python: Function
+def add_numbers(a, b):
+    return a + b
+
+result = add_numbers(5, 3)
+print(result)
+
+
+[CODE] # Python: List comprehension
+numbers = [1, 2, 3, 4, 5]
+squared = [x**2 for x in numbers]
+print(squared)
+
+
+[CODE] # Python: Print Hello World
+print("Hello, World!")
+
+
+[CODE] # Python: File reading
+with open('file.txt', 'r') as f:
+    content = f.read()
+    print(content)
+
+
+[CODE] # Python: Dictionaries
+person = {
+    "name": "Bob",
+    "age": 30,
+    "city": "New York"
+}
+print(person["name"])
+
+
+[CODE] # Python: While loop
+count = 0
+while count < 5:
+    print(count)
+    count += 1
+
+
+[CODE] # Python: Lists
+fruits = ["apple", "banana", "cherry"]
+fruits.append("orange")
+print(fruits[0])
+print(len(fruits))
+
+
+[CODE] # Python: For loop
+for i in range(5):
+    print(f"Count: {i}")
+
+
+[CODE] # Python: Function
+def add_numbers(a, b):
+    return a + b
+
+result = add_numbers(5, 3)
+print(result)
+
+
+[CODE] # Python: Variables and types
+name = "Alice"
+age = 25
+height = 5.6
+is_student = True
+
+
+[CODE] # Python: Variables and types
+name = "Alice"
+age = 25
+height = 5.6
+is_student = True
+
+
+[CODE] # Python: Lists
+fruits = ["apple", "banana", "cherry"]
+fruits.append("orange")
+print(fruits[0])
+print(len(fruits))
+
+
+[CODE] # Python: Lists
+fruits = ["apple", "banana", "cherry"]
+fruits.append("orange")
+print(fruits[0])
+print(len(fruits))
+
+
+[CODE] # Python: Lists
+fruits = ["apple", "banana", "cherry"]
+fruits.append("orange")
+print(fruits[0])
+print(len(fruits))
+
+
+[CODE] # Python: Variables and types
+name = "Alice"
+age = 25
+height = 5.6
+is_student = True
+
+
+[CODE] # Python: For loop
+for i in range(5):
+    print(f"Count: {i}")
+
+
+[CODE] # Python: Dictionaries
+person = {
+    "name": "Bob",
+    "age": 30,
+    "city": "New York"
+}
+print(person["name"])
+
+
+[CODE] # Python: Function
+def add_numbers(a, b):
+    return a + b
+
+result = add_numbers(5, 3)
+print(result)
+
+
+[CODE] # Python: Print Hello World
+print("Hello, World!")
+
+
+[CODE] # Python: File reading
+with open('file.txt', 'r') as f:
+    content = f.read()
+    print(content)
+
+
+[CODE] # Python: Function
+def add_numbers(a, b):
+    return a + b
+
+result = add_numbers(5, 3)
+print(result)
+
+
+[CODE] # Python: Function
+def add_numbers(a, b):
+    return a + b
+
+result = add_numbers(5, 3)
+print(result)
+
+
+[CODE] # Python: List comprehension
+numbers = [1, 2, 3, 4, 5]
+squared = [x**2 for x in numbers]
+print(squared)
+
+
+[CODE] # Python: List comprehension
+numbers = [1, 2, 3, 4, 5]
+squared = [x**2 for x in numbers]
+print(squared)
+
+
+[CODE] # Python: Lists
+fruits = ["apple", "banana", "cherry"]
+fruits.append("orange")
+print(fruits[0])
+print(len(fruits))
+
+
+[CODE] # Python: File reading
+with open('file.txt', 'r') as f:
+    content = f.read()
+    print(content)
+
+
+[CODE] # Python: While loop
+count = 0
+while count < 5:
+    print(count)
+    count += 1
+
+
+[CODE] # Python: File reading
+with open('file.txt', 'r') as f:
+    content = f.read()
+    print(content)
+
+
+[CODE] # Python: Function
+def add_numbers(a, b):
+    return a + b
+
+result = add_numbers(5, 3)
+print(result)
+
+
+[CODE] # Python: List comprehension
+numbers = [1, 2, 3, 4, 5]
+squared = [x**2 for x in numbers]
+print(squared)
+
+
+[CODE] # Python: Lists
+fruits = ["apple", "banana", "cherry"]
+fruits.append("orange")
+print(fruits[0])
+print(len(fruits))
+
+
+[CODE] # Python: Dictionaries
+person = {
+    "name": "Bob",
+    "age": 30,
+    "city": "New York"
+}
+print(person["name"])
+
+
+[CODE] # Python: Print Hello World
+print("Hello, World!")
+
+
+[CODE] # Python: File reading
+with open('file.txt', 'r') as f:
+    content = f.read()
+    print(content)
+
+
+[CODE] # Python: Lists
+fruits = ["apple", "banana", "cherry"]
+fruits.append("orange")
+print(fruits[0])
+print(len(fruits))
+
+
+[CODE] # Python: Class
+class Dog:
+    def __init__(self, name):
+        self.name = name
+    
+    def bark(self):
+        print(f"{self.name} says Woof!")
+
+my_dog = Dog("Buddy")
+my_dog.bark()
+
+
+[CODE] # Python: Print Hello World
+print("Hello, World!")
+
+
+[CODE] # Python: List comprehension
+numbers = [1, 2, 3, 4, 5]
+squared = [x**2 for x in numbers]
+print(squared)
+
+
+[CODE] # Python: Function
+def add_numbers(a, b):
+    return a + b
+
+result = add_numbers(5, 3)
+print(result)
+
+
+[CODE] # Python: Print Hello World
+print("Hello, World!")
+
+
+[CODE] # Python: Function
+def add_numbers(a, b):
+    return a + b
+
+result = add_numbers(5, 3)
+print(result)
+
+
+[CODE] # Python: File reading
+with open('file.txt', 'r') as f:
+    content = f.read()
+    print(content)
+
+
+[CODE] # Python: While loop
+count = 0
+while count < 5:
+    print(count)
+    count += 1
+
+
+[CODE] # Python: While loop
+count = 0
+while count < 5:
+    print(count)
+    count += 1
+
+
+[CODE] # Python: Print Hello World
+print("Hello, World!")
+
+
+[CODE] # Python: Class
+class Dog:
+    def __init__(self, name):
+        self.name = name
+    
+    def bark(self):
+        print(f"{self.name} says Woof!")
+
+my_dog = Dog("Buddy")
+my_dog.bark()
+
+
+[CODE] # Python: Class
+class Dog:
+    def __init__(self, name):
+        self.name = name
+    
+    def bark(self):
+        print(f"{self.name} says Woof!")
+
+my_dog = Dog("Buddy")
+my_dog.bark()
+
+
+[CODE] # Python: List comprehension
+numbers = [1, 2, 3, 4, 5]
+squared = [x**2 for x in numbers]
+print(squared)
+
+
+[CODE] # Python: Lists
+fruits = ["apple", "banana", "cherry"]
+fruits.append("orange")
+print(fruits[0])
+print(len(fruits))
+
+
+[CODE] # Python: Dictionaries
+person = {
+    "name": "Bob",
+    "age": 30,
+    "city": "New York"
+}
+print(person["name"])
+
+
+[CODE] # Python: Print Hello World
+print("Hello, World!")
+
+
+[CODE] # Python: For loop
+for i in range(5):
+    print(f"Count: {i}")
+
+
+[CODE] # Python: For loop
+for i in range(5):
+    print(f"Count: {i}")
+
+
+[CODE] # Python: Lists
+fruits = ["apple", "banana", "cherry"]
+fruits.append("orange")
+print(fruits[0])
+print(len(fruits))
+
+
+[CODE] # Python: Print Hello World
+print("Hello, World!")
+
+
+[CODE] # Python: File reading
+with open('file.txt', 'r') as f:
+    content = f.read()
+    print(content)
+
+
+[CODE] # Python: Dictionaries
+person = {
+    "name": "Bob",
+    "age": 30,
+    "city": "New York"
+}
+print(person["name"])
+
+
+[CODE] # Python: Dictionaries
+person = {
+    "name": "Bob",
+    "age": 30,
+    "city": "New York"
+}
+print(person["name"])
+
+
+[CODE] # Python: File reading
+with open('file.txt', 'r') as f:
+    content = f.read()
+    print(content)
+
+
+[CODE] # Python: Lists
+fruits = ["apple", "banana", "cherry"]
+fruits.append("orange")
+print(fruits[0])
+print(len(fruits))
+
+
+[CODE] # Python: While loop
+count = 0
+while count < 5:
+    print(count)
+    count += 1
+
+
+[CODE] # Python: Function
+def add_numbers(a, b):
+    return a + b
+
+result = add_numbers(5, 3)
+print(result)
+
+
+[CODE] # Python: File reading
+with open('file.txt', 'r') as f:
+    content = f.read()
+    print(content)
+
+
+[CODE] # Python: Variables and types
+name = "Alice"
+age = 25
+height = 5.6
+is_student = True
+
+
+[CODE] # Python: Lists
+fruits = ["apple", "banana", "cherry"]
+fruits.append("orange")
+print(fruits[0])
+print(len(fruits))
+
+
+[CODE] # Python: Print Hello World
+print("Hello, World!")
+
+
+[CODE] # Python: File reading
+with open('file.txt', 'r') as f:
+    content = f.read()
+    print(content)
+
+
+[CODE] # Python: File reading
+with open('file.txt', 'r') as f:
+    content = f.read()
+    print(content)
+
+
+[CODE] # Python: Dictionaries
+person = {
+    "name": "Bob",
+    "age": 30,
+    "city": "New York"
+}
+print(person["name"])
+
+
+[CODE] # Python: Dictionaries
+person = {
+    "name": "Bob",
+    "age": 30,
+    "city": "New York"
+}
+print(person["name"])
+
+
+[CODE] # Python: File reading
+with open('file.txt', 'r') as f:
+    content = f.read()
+    print(content)
+
+
+[CODE] # Python: Lists
+fruits = ["apple", "banana", "cherry"]
+fruits.append("orange")
+print(fruits[0])
+print(len(fruits))
+
+
+[CODE] # Python: List comprehension
+numbers = [1, 2, 3, 4, 5]
+squared = [x**2 for x in numbers]
+print(squared)
+
+
+[CODE] # Python: Class
+class Dog:
+    def __init__(self, name):
+        self.name = name
+    
+    def bark(self):
+        print(f"{self.name} says Woof!")
+
+my_dog = Dog("Buddy")
+my_dog.bark()
+
+
+[CODE] # Python: List comprehension
+numbers = [1, 2, 3, 4, 5]
+squared = [x**2 for x in numbers]
+print(squared)
+
+
+[CODE] # Python: Dictionaries
+person = {
+    "name": "Bob",
+    "age": 30,
+    "city": "New York"
+}
+print(person["name"])
+
+
+[CODE] # Python: Function
+def add_numbers(a, b):
+    return a + b
+
+result = add_numbers(5, 3)
+print(result)
+
+
+[CODE] # Python: Dictionaries
+person = {
+    "name": "Bob",
+    "age": 30,
+    "city": "New York"
+}
+print(person["name"])
+
+
+[CODE] # Python: Dictionaries
+person = {
+    "name": "Bob",
+    "age": 30,
+    "city": "New York"
+}
+print(person["name"])
+
+
+[CODE] # Python: Dictionaries
+person = {
+    "name": "Bob",
+    "age": 30,
+    "city": "New York"
+}
+print(person["name"])
+
+
+[CODE] # Python: For loop
+for i in range(5):
+    print(f"Count: {i}")
+
+
+[CODE] # Python: Print Hello World
+print("Hello, World!")
+
+
+[CODE] # Python: List comprehension
+numbers = [1, 2, 3, 4, 5]
+squared = [x**2 for x in numbers]
+print(squared)
+
+
+[CODE] # Python: Variables and types
+name = "Alice"
+age = 25
+height = 5.6
+is_student = True
+
+
+[CODE] # Python: Function
+def add_numbers(a, b):
+    return a + b
+
+result = add_numbers(5, 3)
+print(result)
+
+
+[CODE] # Python: Class
+class Dog:
+    def __init__(self, name):
+        self.name = name
+    
+    def bark(self):
+        print(f"{self.name} says Woof!")
+
+my_dog = Dog("Buddy")
+my_dog.bark()
+
+
+[CODE] # Python: While loop
+count = 0
+while count < 5:
+    print(count)
+    count += 1
+
+
+[CODE] # Python: Dictionaries
+person = {
+    "name": "Bob",
+    "age": 30,
+    "city": "New York"
+}
+print(person["name"])
+
+
+[CODE] # Python: Function
+def add_numbers(a, b):
+    return a + b
+
+result = add_numbers(5, 3)
+print(result)
+
+
+[CODE] # Python: For loop
+for i in range(5):
+    print(f"Count: {i}")
+
+
+[CODE] # Python: Dictionaries
+person = {
+    "name": "Bob",
+    "age": 30,
+    "city": "New York"
+}
+print(person["name"])
+
+
+[CODE] # Python: File reading
+with open('file.txt', 'r') as f:
+    content = f.read()
+    print(content)
+
+
+[CODE] # Python: Function
+def add_numbers(a, b):
+    return a + b
+
+result = add_numbers(5, 3)
+print(result)
+
+
+[CODE] # Python: Function
+def add_numbers(a, b):
+    return a + b
+
+result = add_numbers(5, 3)
+print(result)
+
+
+[CODE] # Python: Function
+def add_numbers(a, b):
+    return a + b
+
+result = add_numbers(5, 3)
+print(result)
+
+
+[CODE] # Python: Dictionaries
+person = {
+    "name": "Bob",
+    "age": 30,
+    "city": "New York"
+}
+print(person["name"])
+
+
+[CODE] # Python: Variables and types
+name = "Alice"
+age = 25
+height = 5.6
+is_student = True
+
+
+[CODE] # Python: Function
+def add_numbers(a, b):
+    return a + b
+
+result = add_numbers(5, 3)
+print(result)
+
+
+[CODE] # Python: Dictionaries
+person = {
+    "name": "Bob",
+    "age": 30,
+    "city": "New York"
+}
+print(person["name"])
+
+
+[CODE] # Python: List comprehension
+numbers = [1, 2, 3, 4, 5]
+squared = [x**2 for x in numbers]
+print(squared)
+
+
+[CODE] # Python: Lists
+fruits = ["apple", "banana", "cherry"]
+fruits.append("orange")
+print(fruits[0])
+print(len(fruits))
+
+
+[CODE] # Python: While loop
+count = 0
+while count < 5:
+    print(count)
+    count += 1
+
+
+[CODE] # Python: File reading
+with open('file.txt', 'r') as f:
+    content = f.read()
+    print(content)
+
+
+[CODE] # Python: Function
+def add_numbers(a, b):
+    return a + b
+
+result = add_numbers(5, 3)
+print(result)
+
+
+[CODE] # Python: Print Hello World
+print("Hello, World!")
+
+
+[CODE] # Python: List comprehension
+numbers = [1, 2, 3, 4, 5]
+squared = [x**2 for x in numbers]
+print(squared)
+
+
+[CODE] # Python: For loop
+for i in range(5):
+    print(f"Count: {i}")
+
+
+[CODE] # Python: Dictionaries
+person = {
+    "name": "Bob",
+    "age": 30,
+    "city": "New York"
+}
+print(person["name"])
+
+
+[CODE] # Python: Lists
+fruits = ["apple", "banana", "cherry"]
+fruits.append("orange")
+print(fruits[0])
+print(len(fruits))
+
+
+[CODE] # Python: Variables and types
+name = "Alice"
+age = 25
+height = 5.6
+is_student = True
+
+
+[CODE] # Python: List comprehension
+numbers = [1, 2, 3, 4, 5]
+squared = [x**2 for x in numbers]
+print(squared)
+
+
+[CODE] # Python: Lists
+fruits = ["apple", "banana", "cherry"]
+fruits.append("orange")
+print(fruits[0])
+print(len(fruits))
+
+
+[CODE] # Python: Print Hello World
+print("Hello, World!")
+
+
+[CODE] # Python: File reading
+with open('file.txt', 'r') as f:
+    content = f.read()
+    print(content)
+
+
+[CODE] # Python: Dictionaries
+person = {
+    "name": "Bob",
+    "age": 30,
+    "city": "New York"
+}
+print(person["name"])
+
+
+[CODE] # Python: Lists
+fruits = ["apple", "banana", "cherry"]
+fruits.append("orange")
+print(fruits[0])
+print(len(fruits))
+
+
+[CODE] # Python: Variables and types
+name = "Alice"
+age = 25
+height = 5.6
+is_student = True
+
+
+[CODE] # Python: For loop
+for i in range(5):
+    print(f"Count: {i}")
+
+
+[CODE] # Python: Dictionaries
+person = {
+    "name": "Bob",
+    "age": 30,
+    "city": "New York"
+}
+print(person["name"])
+
+
+[CODE] # Python: For loop
+for i in range(5):
+    print(f"Count: {i}")
+
+
+[CODE] # Python: For loop
+for i in range(5):
+    print(f"Count: {i}")
+
+
+[CODE] # Python: While loop
+count = 0
+while count < 5:
+    print(count)
+    count += 1
+
+
+[CODE] # Python: While loop
+count = 0
+while count < 5:
+    print(count)
+    count += 1
+
+
+[CODE] # Python: Variables and types
+name = "Alice"
+age = 25
+height = 5.6
+is_student = True
+
+
+[CODE] # Python: Class
+class Dog:
+    def __init__(self, name):
+        self.name = name
+    
+    def bark(self):
+        print(f"{self.name} says Woof!")
+
+my_dog = Dog("Buddy")
+my_dog.bark()
+
+
+[CODE] # Python: For loop
+for i in range(5):
+    print(f"Count: {i}")
+
+
+[CODE] # Python: List comprehension
+numbers = [1, 2, 3, 4, 5]
+squared = [x**2 for x in numbers]
+print(squared)
+
+
+[CODE] # Python: Variables and types
+name = "Alice"
+age = 25
+height = 5.6
+is_student = True
+
+
+[CODE] # Python: Variables and types
+name = "Alice"
+age = 25
+height = 5.6
+is_student = True
+
+
+[CODE] # Python: Lists
+fruits = ["apple", "banana", "cherry"]
+fruits.append("orange")
+print(fruits[0])
+print(len(fruits))
+
+
+[CODE] # Python: Class
+class Dog:
+    def __init__(self, name):
+        self.name = name
+    
+    def bark(self):
+        print(f"{self.name} says Woof!")
+
+my_dog = Dog("Buddy")
+my_dog.bark()
+
+
+[CODE] # Python: File reading
+with open('file.txt', 'r') as f:
+    content = f.read()
+    print(content)
+
+
+[CODE] # Python: Variables and types
+name = "Alice"
+age = 25
+height = 5.6
+is_student = True
+
+
+[CODE] # Python: Print Hello World
+print("Hello, World!")
+
+
+[CODE] # Python: Dictionaries
+person = {
+    "name": "Bob",
+    "age": 30,
+    "city": "New York"
+}
+print(person["name"])
+
+
+[CODE] # Python: For loop
+for i in range(5):
+    print(f"Count: {i}")
+
+
+[CODE] # Python: Dictionaries
+person = {
+    "name": "Bob",
+    "age": 30,
+    "city": "New York"
+}
+print(person["name"])
+
+
+[CODE] # Python: Lists
+fruits = ["apple", "banana", "cherry"]
+fruits.append("orange")
+print(fruits[0])
+print(len(fruits))
+
+
+[CODE] # Python: List comprehension
+numbers = [1, 2, 3, 4, 5]
+squared = [x**2 for x in numbers]
+print(squared)
+
+
+[CODE] # Python: Function
+def add_numbers(a, b):
+    return a + b
+
+result = add_numbers(5, 3)
+print(result)
+
+
+[CODE] # Python: Print Hello World
+print("Hello, World!")
+
+
+[CODE] # Python: Dictionaries
+person = {
+    "name": "Bob",
+    "age": 30,
+    "city": "New York"
+}
+print(person["name"])
+
+
+[CODE] # Python: Variables and types
+name = "Alice"
+age = 25
+height = 5.6
+is_student = True
+
+
+[CODE] # Python: Lists
+fruits = ["apple", "banana", "cherry"]
+fruits.append("orange")
+print(fruits[0])
+print(len(fruits))
+
+
+[CODE] # Python: For loop
+for i in range(5):
+    print(f"Count: {i}")
+
+
+[CODE] # Python: Variables and types
+name = "Alice"
+age = 25
+height = 5.6
+is_student = True
+
+
+[CODE] # Python: Print Hello World
+print("Hello, World!")
+
+
+[CODE] # Python: For loop
+for i in range(5):
+    print(f"Count: {i}")
+
+
+[CODE] # Python: Print Hello World
+print("Hello, World!")
+
+
+[CODE] # Python: Lists
+fruits = ["apple", "banana", "cherry"]
+fruits.append("orange")
+print(fruits[0])
+print(len(fruits))
+
+
+[CODE] # Python: List comprehension
+numbers = [1, 2, 3, 4, 5]
+squared = [x**2 for x in numbers]
+print(squared)
+
+
+[CODE] # Python: List comprehension
+numbers = [1, 2, 3, 4, 5]
+squared = [x**2 for x in numbers]
+print(squared)
+
+
+[CODE] # Python: Variables and types
+name = "Alice"
+age = 25
+height = 5.6
+is_student = True
+
+
+[CODE] # Python: While loop
+count = 0
+while count < 5:
+    print(count)
+    count += 1
+
+
+[CODE] # Python: For loop
+for i in range(5):
+    print(f"Count: {i}")
+
+
+[CODE] # Python: File reading
+with open('file.txt', 'r') as f:
+    content = f.read()
+    print(content)
+
+
+[CODE] # Python: While loop
+count = 0
+while count < 5:
+    print(count)
+    count += 1
+
+
+[CODE] # Python: Lists
+fruits = ["apple", "banana", "cherry"]
+fruits.append("orange")
+print(fruits[0])
+print(len(fruits))
+
+
+[CODE] # Python: While loop
+count = 0
+while count < 5:
+    print(count)
+    count += 1
+
+
+[CODE] # Python: For loop
+for i in range(5):
+    print(f"Count: {i}")
+
+
+[CODE] # Python: File reading
+with open('file.txt', 'r') as f:
+    content = f.read()
+    print(content)
+
+
+[CODE] # Python: Dictionaries
+person = {
+    "name": "Bob",
+    "age": 30,
+    "city": "New York"
+}
+print(person["name"])
+
+
+[CODE] # Python: Class
+class Dog:
+    def __init__(self, name):
+        self.name = name
+    
+    def bark(self):
+        print(f"{self.name} says Woof!")
+
+my_dog = Dog("Buddy")
+my_dog.bark()
+
+
+[CODE] # Python: While loop
+count = 0
+while count < 5:
+    print(count)
+    count += 1
+
+
+[CODE] # Python: Dictionaries
+person = {
+    "name": "Bob",
+    "age": 30,
+    "city": "New York"
+}
+print(person["name"])
+
+
+[CODE] # Python: Print Hello World
+print("Hello, World!")
+
+
+[CODE] # Python: Lists
+fruits = ["apple", "banana", "cherry"]
+fruits.append("orange")
+print(fruits[0])
+print(len(fruits))
+
+
+[CODE] # Python: Class
+class Dog:
+    def __init__(self, name):
+        self.name = name
+    
+    def bark(self):
+        print(f"{self.name} says Woof!")
+
+my_dog = Dog("Buddy")
+my_dog.bark()
+
+
+[CODE] # Python: For loop
+for i in range(5):
+    print(f"Count: {i}")
+
+
+[CODE] # Python: Print Hello World
+print("Hello, World!")
+
+
+[CODE] # Python: List comprehension
+numbers = [1, 2, 3, 4, 5]
+squared = [x**2 for x in numbers]
+print(squared)
+
+
+[CODE] # Python: While loop
+count = 0
+while count < 5:
+    print(count)
+    count += 1
+
+
+[CODE] # Python: List comprehension
+numbers = [1, 2, 3, 4, 5]
+squared = [x**2 for x in numbers]
+print(squared)
+
+
+[CODE] # Python: Function
+def add_numbers(a, b):
+    return a + b
+
+result = add_numbers(5, 3)
+print(result)
+
+
+[CODE] # Python: Function
+def add_numbers(a, b):
+    return a + b
+
+result = add_numbers(5, 3)
+print(result)
+
+
+[CODE] # Python: File reading
+with open('file.txt', 'r') as f:
+    content = f.read()
+    print(content)
+
+
+[CODE] # Python: Class
+class Dog:
+    def __init__(self, name):
+        self.name = name
+    
+    def bark(self):
+        print(f"{self.name} says Woof!")
+
+my_dog = Dog("Buddy")
+my_dog.bark()
+
+
+[CODE] # Python: File reading
+with open('file.txt', 'r') as f:
+    content = f.read()
+    print(content)
+
+
+[CODE] # Python: Variables and types
+name = "Alice"
+age = 25
+height = 5.6
+is_student = True
+
+
+[CODE] # Python: Variables and types
+name = "Alice"
+age = 25
+height = 5.6
+is_student = True
+
+
+[CODE] # Python: Dictionaries
+person = {
+    "name": "Bob",
+    "age": 30,
+    "city": "New York"
+}
+print(person["name"])
+
+
+[CODE] # Python: File reading
+with open('file.txt', 'r') as f:
+    content = f.read()
+    print(content)
+
+
+[CODE] # Python: Print Hello World
+print("Hello, World!")
+
+
+[CODE] # Python: Print Hello World
+print("Hello, World!")
+
+
+[CODE] # Python: While loop
+count = 0
+while count < 5:
+    print(count)
+    count += 1
+
+
+[CODE] # Python: For loop
+for i in range(5):
+    print(f"Count: {i}")
+
+
+[CODE] # Python: List comprehension
+numbers = [1, 2, 3, 4, 5]
+squared = [x**2 for x in numbers]
+print(squared)
+
+
+[CODE] # Python: Variables and types
+name = "Alice"
+age = 25
+height = 5.6
+is_student = True
+
+
+[CODE] # Python: Print Hello World
+print("Hello, World!")
+
+
+[CODE] # Python: Class
+class Dog:
+    def __init__(self, name):
+        self.name = name
+    
+    def bark(self):
+        print(f"{self.name} says Woof!")
+
+my_dog = Dog("Buddy")
+my_dog.bark()
+
+
+[CODE] # Python: Function
+def add_numbers(a, b):
+    return a + b
+
+result = add_numbers(5, 3)
+print(result)
+
+
+[CODE] # Python: Class
+class Dog:
+    def __init__(self, name):
+        self.name = name
+    
+    def bark(self):
+        print(f"{self.name} says Woof!")
+
+my_dog = Dog("Buddy")
+my_dog.bark()
+
+
+[CODE] # Python: While loop
+count = 0
+while count < 5:
+    print(count)
+    count += 1
+
+
+[CODE] # Python: File reading
+with open('file.txt', 'r') as f:
+    content = f.read()
+    print(content)
+

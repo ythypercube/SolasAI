@@ -21,4 +21,6 @@ DATASET="${1:-conversation}"
 echo "Training on dataset: $DATASET"
 echo ""
 
-python3 train_model.py --dataset "$DATASET" --epochs "${EPOCHS:-600}"
+# Forward all arguments to Python script
+# First arg is dataset, rest are passed through
+python3 train_model.py --dataset "$DATASET" "${@:2}"
