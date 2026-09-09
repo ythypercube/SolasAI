@@ -39,6 +39,63 @@ const API_KEYS = String(process.env.API_KEYS || '')
 
 const rateLimits = new Map();
 const mcAgentRateLimits = new Map();
+const sessions = new Map();
+const sessionFeedback = new Map();
+const mcAgentSessions = new Map();
+
+function appendSessionFeedback(sessionId, entry) {
+  const list = sessionFeedback.get(sessionId) || [];
+  list.push(entry);
+  sessionFeedback.set(sessionId, list);
+}
+
+// ── MC agent memory persistence ─────────────────────────────────────────────
+// mcAgentSessions previously lived in RAM only, so restarting the server wiped
+// out everything the Minecraft agent had learned (eat thresholds, opponent
+// history, wood-chop timing, etc). This mirrors it to a JSON file on disk.
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const MC_MEMORY_DIR = path.join(__dirname, 'data');
+const MC_MEMORY_FILE = path.join(MC_MEMORY_DIR, 'mc-agent-memory.json');
+const MC_MEMORY_SAVE_DEBOUNCE_MS = 2000;
+
+function persistMcMemoryToDisk() {
+  try {
+    fs.mkdirSync(MC_MEMORY_DIR, { recursive: true });
+    const serializable = Object.fromEntries(mcAgentSessions.entries());
+    fs.writeFileSync(MC_MEMORY_FILE, JSON.stringify(serializable), 'utf8');
+  } catch (error) {
+    console.error('[mc-memory] failed to save', error instanceof Error ? error.message : error);
+  }
+}
+
+let mcMemorySaveTimer = null;
+function scheduleMcMemorySave() {
+  // Debounced: the mc-agent route fires this every tick, so writing on a short
+  // delay (and collapsing bursts into one write) avoids hammering the disk.
+  if (mcMemorySaveTimer) return;
+  mcMemorySaveTimer = setTimeout(() => {
+    mcMemorySaveTimer = null;
+    persistMcMemoryToDisk();
+  }, MC_MEMORY_SAVE_DEBOUNCE_MS);
+}
+
+function loadMcMemoryFromDisk() {
+  try {
+    if (!fs.existsSync(MC_MEMORY_FILE)) return;
+    const raw = fs.readFileSync(MC_MEMORY_FILE, 'utf8');
+    const parsed = JSON.parse(raw);
+    if (parsed && typeof parsed === 'object') {
+      for (const [sessionId, ctx] of Object.entries(parsed)) {
+        mcAgentSessions.set(sessionId, ctx);
+      }
+      console.log(`[mc-memory] loaded ${mcAgentSessions.size} session(s) from disk`);
+    }
+  } catch (error) {
+    console.error('[mc-memory] failed to load', error instanceof Error ? error.message : error);
+  }
+}
+loadMcMemoryFromDisk();
 
 const app = express();
 app.use(cors());
@@ -1618,9 +1675,11 @@ function buildMinecraftAction(objective, state = {}, sessionCtx = {}) {
   }
 
   if (mode === 'pvp') {
-    // Strafe direction changes every 3 decisions (not every 1) to avoid rapid spin side-effects
+    // Strafe direction fallback: alternate slowly if we have no reliable signal
+    // about which way the opponent is actually circling (see enemyCircling below,
+    // which overrides this once a real target with velocity data is tracked).
     const strafePhase = Math.floor(pulse / 3);
-    const strafeLeft = (strafePhase % 2) === 0;
+    const strafeLeftFallback = (strafePhase % 2) === 0;
 
     const pvpDuration = 4; // slightly slower updates to reduce overshoot and path jitter
 
@@ -1646,6 +1705,51 @@ function buildMinecraftAction(objective, state = {}, sessionCtx = {}) {
     const targetDz   = hasPlayerTarget ? predictedEnemyOffset.dz : (hasMobTarget ? s.nearestHostileDz   : 0);
     const windMaceComboStage = Number(sessionCtx.windMaceComboStage || 0);
     const incomingMaceDive = hasPlayerTarget && isIncomingMaceDive(s, targetDist);
+    // Declared here (rather than further down near its other shield usage) because the
+    // mace-dive defense branch below reads it; referencing a `const` before its original
+    // declaration point throws "Cannot access before initialization" and would crash
+    // this entire decision whenever a dive came in without a pearl available.
+    const hasShield = s.shieldSlot >= 0;
+
+    // ── Opponent intent prediction ────────────────────────────────────────────
+    // Instead of moving/strafing/jumping on a fixed timer, read the opponent's
+    // actual velocity vector each tick to figure out what they're doing right
+    // now (closing in, backing off, circling, or jumping) and use that to decide
+    // where WE should be a moment from now, rather than reacting to where they
+    // already were. Only meaningful for a tracked player (nearestEnemyVel* is
+    // not reported for generic hostile mobs).
+    let enemyClosingSpeed = 0; // >0 = moving toward us, <0 = moving away
+    let enemyLateralSpeed = 0; // magnitude/sign of their strafe/circle motion
+    if (hasPlayerTarget && s.nearestEnemyDistance > 0.01) {
+      const invDist = 1 / s.nearestEnemyDistance;
+      const towardPlayerX = -s.nearestEnemyDx * invDist;
+      const towardPlayerZ = -s.nearestEnemyDz * invDist;
+      enemyClosingSpeed = (s.nearestEnemyVelX * towardPlayerX) + (s.nearestEnemyVelZ * towardPlayerZ);
+      enemyLateralSpeed = (s.nearestEnemyVelX * -towardPlayerZ) + (s.nearestEnemyVelZ * towardPlayerX);
+    }
+    const enemyAdvancing = hasPlayerTarget && enemyClosingSpeed > 0.06;
+    const enemyRetreating = hasPlayerTarget && enemyClosingSpeed < -0.06;
+    const enemyCircling = hasPlayerTarget && Math.abs(enemyLateralSpeed) > 0.05;
+    const enemyCirclingRight = enemyCircling && enemyLateralSpeed < 0;
+    const enemyJumping = hasPlayerTarget && s.nearestEnemyVelY > 0.15;
+    // Generalized "something is about to land on us from above" check (mace or
+    // not) - isIncomingMaceDive() only fires for mace/wind-charge users.
+    const enemyDivingOnUs = hasPlayerTarget
+      && s.nearestEnemyDy > 1.6
+      && s.nearestEnemyVelY < -0.35
+      && targetDist > 0
+      && targetDist < 6;
+    // Where the fight will actually be a moment from now, not where it is this
+    // tick - this is what movement/spacing decisions below key off of.
+    const predictedTargetDist = hasPlayerTarget
+      ? Math.hypot(predictedEnemyOffset.dx, predictedEnemyOffset.dz)
+      : targetDist;
+
+    // Predicted-position spacing takes priority over a blind timer: circle the
+    // direction that counters their actual lateral motion (keeps cutting an
+    // angle on them) and only fall back to the slow alternation when they
+    // aren't meaningfully strafing (holding still or coming straight at us).
+    const strafeLeft = enemyCircling ? !enemyCirclingRight : strafeLeftFallback;
 
     // ── Compute yaw correction via atan2 (stable lock-on) ────────────────────
     // MC yaw: 0=south(+Z), 90=west(−X), −90=east(+X), 180=north(−Z)
@@ -1663,23 +1767,41 @@ function buildMinecraftAction(objective, state = {}, sessionCtx = {}) {
     }
     // Use rawYaw (total error) for alignment checks, not per-tick aimYawDelta
     const isAligned = hasEnemyInCrosshair || (hasTarget && Math.abs(rawYaw) < 22);
-    const canStrafe = hasTarget && Math.abs(rawYaw) < 8 && targetDist >= 3.0 && targetDist < 4.2;
+    const canStrafe = hasTarget && Math.abs(rawYaw) < 8 && predictedTargetDist >= 3.0 && predictedTargetDist < 4.2;
     const isFacing  = hasTarget && Math.abs(rawYaw) < 60; // broad facing check for movement
     const attackWindow = hasTarget && isAligned && targetDist <= 3.35;
-    const holdGroundRange = hasTarget && targetDist >= 3.7 && targetDist <= 4.2;
+    const holdGroundRange = hasTarget && predictedTargetDist >= 3.7 && predictedTargetDist <= 4.2;
     // User-configured aggression profile: keep fighting instead of low-HP retreating.
     const shouldRetreat = false;
     const enemyHoldingSword = /_sword|trident/.test(s.nearestEnemyMainItem || '');
     const comboPressure = hasTarget && targetDist < 3.1 && (tookRecentDamage || damageAggroActive);
-    const preferredKiteRange = hasTarget && targetDist >= 3.1 && targetDist <= 4.1;
-    const shouldCloseGap = hasTarget && targetDist > 4.1 && (isFacing || damageAggroActive);
+    const preferredKiteRange = hasTarget && predictedTargetDist >= 3.1 && predictedTargetDist <= 4.1;
+    // Chase harder when they're actively trying to create distance, so they can't
+    // just kite forever; be a bit more patient if they're standing their ground.
+    const shouldCloseGap = hasTarget
+      && ((predictedTargetDist > 4.1 && (isFacing || damageAggroActive)) || (enemyRetreating && predictedTargetDist > 3.4));
     const pressureCycle = pulse % 10;
     const burstWindow = pressureCycle < 9; // ~90% combo pressure window
-    const shouldBurstIn = hasTarget && !shouldRetreat && burstWindow && isFacing && (targetDist > 2.4 && targetDist <= 4.8);
+    const shouldBurstIn = hasTarget && !shouldRetreat && burstWindow && isFacing
+      && ((targetDist > 2.4 && targetDist <= 4.8) || (enemyRetreating && predictedTargetDist <= 5.5));
     const shouldStepOut = hasTarget && !shouldRetreat && veryLowHp && comboPressure && targetDist < 2.3;
     const retaliateWindow = damageAggroActive && hasEnemyInCrosshair && s.focusedDistance > 0 && s.focusedDistance <= 3.35;
     const shouldComboPush = hasTarget && !shouldRetreat && isAligned && burstWindow && targetDist >= 2.6 && targetDist <= 3.4;
     const forceMeleeCommit = hasTarget && isFacing && targetDist > 0 && targetDist <= 3.6;
+    // Jumping just before a landed hit lands a critical (bonus damage) attack.
+    // Trigger this off the PREDICTED spacing (are we actually about to be in
+    // range when the swing lands) and the opponent's state, not a bare timer:
+    // skip it entirely if they're already airborne (avoid trading crits mid-air
+    // for no benefit) or diving on us (we want to be dodging, not jumping up
+    // to meet them), and only for weapons where a jump-crit actually helps.
+    const shouldCritJump = (attackWindow || shouldComboPush)
+      && s.onGround
+      && preferredPvpStyle !== 'mace'
+      && !incomingMaceDive
+      && !enemyJumping
+      && !enemyDivingOnUs
+      && predictedTargetDist <= 3.4
+      && (pulse % 4 === 0); // short cooldown so it doesn't bunny-hop every tick
 
     action.hotbarSlot  = preferredPvpStyle === 'mace'
       ? (hasBreachMace && enemyHasShield ? s.breachMaceSlot : s.maceSlot)
@@ -1691,7 +1813,7 @@ function buildMinecraftAction(objective, state = {}, sessionCtx = {}) {
     // Strafe: only while NOT strongly turning (use rawYaw gate) and within engagement range
     action.left        = strafeLeft  && (canStrafe || preferredKiteRange) && !shouldRetreat;
     action.right       = !strafeLeft && (canStrafe || preferredKiteRange) && !shouldRetreat;
-    action.jump        = false;
+    action.jump        = shouldCritJump;
     // When scanning with no target, rotate slowly; when targeting, apply per-tick correction
     action.yawDelta    = hasTarget ? aimYawDelta : 0;
     action.pitchDelta  = hasTarget ? clamp((-s.pitch) / pvpDuration, -5, 5) : 0;
@@ -1746,10 +1868,23 @@ function buildMinecraftAction(objective, state = {}, sessionCtx = {}) {
       } else {
         noteParts.push('Mace-dive defense: spacing away without pearl or shield.');
       }
+    } else if (enemyDivingOnUs) {
+      // Someone (mace or otherwise) is falling toward us from above - predicted
+      // from their height and downward velocity, not just inferred from their
+      // held item. Sidestep instead of standing still and eating the crit.
+      action.attack = false;
+      action.forward = false;
+      action.back = true;
+      action.sprint = false;
+      action.jump = false;
+      action.durationTicks = 3;
+      action.left = pulse % 2 === 0;
+      action.right = pulse % 2 !== 0;
+      noteParts.push('Predicted incoming jump-attack: sidestepping before it lands.');
     }
 
     noteParts.push(hasTarget
-      ? `PVP: ${preferredPvpStyle} style on ${targetName} dist=${targetDist.toFixed(1)} err=${rawYaw.toFixed(0)}° aligned=${isAligned} kite=${preferredKiteRange} burst=${shouldBurstIn}`
+      ? `PVP: ${preferredPvpStyle} style on ${targetName} dist=${targetDist.toFixed(1)} predicted=${predictedTargetDist.toFixed(1)} err=${rawYaw.toFixed(0)}° aligned=${isAligned} enemy=${enemyAdvancing ? 'advancing' : enemyRetreating ? 'retreating' : enemyCircling ? 'circling' : 'holding'} kite=${preferredKiteRange} burst=${shouldBurstIn}`
       : `PVP: ${preferredPvpStyle} style searching by sight.`);
 
     // Low-HP retreat removed by request: stay in fight and rely on timed eating.
@@ -1779,7 +1914,6 @@ function buildMinecraftAction(objective, state = {}, sessionCtx = {}) {
     }
 
     // ── Shield: raise shield when enemy approaches for a melee strike ────────
-    const hasShield = s.shieldSlot >= 0;
     const enemyAboutToStrike = hasTarget && targetDist < 2.5 && s.nearestEnemyHasMeleeWeapon;
     const shouldShieldPressure = hasShield
       && !shouldRetreat
@@ -2526,59 +2660,151 @@ function buildMinecraftAction(objective, state = {}, sessionCtx = {}) {
   }
 
   if (mode === 'general') {
+    // ── Shared tree/leaves/log-drop detection used by both the tuned "general1"
+    // preset and normal free-text objectives like "get wood" ──────────────────
+    const treeInSight = /log|wood|tree|oak|birch|spruce|jungle|acacia|dark_oak|mangrove|cherry/.test(s.focusedEntity || '');
+    const leavesInSight = /leaves/.test(s.focusedEntity || '');
+    const closeHarvestable = s.focusedDistance > 0 && s.focusedDistance <= 4.4;
+    const likelyStuck = s.onGround && s.horizontalSpeed < 0.025 && !edgeRisk;
+    const obstacleAhead = s.focusedDistance > 0
+      && s.focusedDistance < 1.8
+      && !treeInSight
+      && !leavesInSight
+      && !/player|zombie|skeleton|creeper|spider|enderman|villager|golem|slime|witch|phantom|blaze|piglin|hoglin|ravager|warden/.test(s.focusedEntity || '');
+    const curveLeft = (Math.floor(pulse / 6) % 2) === 0;
+    const wantsWood = /\b(wood|log|logs|plank|planks|lumber|tree)\b/.test(text);
+    // The client only reports the block/entity directly under the crosshair, so once
+    // the bottom logs of a tree are gone the bot can lose the trunk behind leaves, or
+    // simply not notice the felled logs sitting on the ground. Track "we were just
+    // chopping wood" (persisted in sessionCtx by the /mc-agent route) so the bot keeps
+    // scanning the canopy and walks over to collect drops instead of wandering off.
+    const lastWoodChopTick = Number(sessionCtx.lastWoodChopTick || -9999);
+    const recentlyChoppingWood = (pulse - lastWoodChopTick) < 100;
+    const woodDropNearby = s.nearestDroppedItemDistance > 0 && s.nearestDroppedItemDistance < 10;
+    const shouldCollectWoodDrop = !treeInSight
+      && !leavesInSight
+      && woodDropNearby
+      && (recentlyChoppingWood || wantsWood)
+      && !enemyVeryClose;
+
     if (isGeneral1Preset) {
-      const treeInSight = /log|wood|tree|oak|birch|spruce|jungle|acacia|dark_oak|mangrove|cherry/.test(s.focusedEntity || '');
-      const closeHarvestable = s.focusedDistance > 0 && s.focusedDistance <= 4.2;
-      const likelyStuck = s.onGround && s.horizontalSpeed < 0.025 && !edgeRisk;
-      const obstacleAhead = s.focusedDistance > 0
-        && s.focusedDistance < 1.8
-        && !/log|wood|tree|oak|birch|spruce|jungle|acacia|dark_oak|mangrove|cherry/.test(s.focusedEntity || '')
-        && !/player|zombie|skeleton|creeper|spider|enderman|villager|golem|slime|witch|phantom|blaze|piglin|hoglin|ravager|warden/.test(s.focusedEntity || '');
-      const curveLeft = (Math.floor(pulse / 6) % 2) === 0;
       action.use = false;
-      action.attack = treeInSight || closeHarvestable;
-      action.hotbarSlot = s.axeSlot >= 0 ? s.axeSlot : (s.swordSlot >= 0 ? s.swordSlot : s.pickaxeSlot);
-      action.forward = !treeInSight;
-      action.sprint = !treeInSight && !lowHp;
-      action.jump = !treeInSight && (s.horizontalSpeed < 0.06 || likelyStuck || obstacleAhead);
-      action.sneak = false;
-      action.durationTicks = 6;
-      action.yawDelta = treeInSight ? 0 : (curveLeft ? 2 : -2);
-      action.moveAngle = treeInSight ? 0 : (curveLeft ? -10 : 10);
       action.left = false;
       action.right = false;
 
-      if (!treeInSight && obstacleAhead) {
-        action.left = curveLeft;
-        action.right = !curveLeft;
-        action.moveAngle = curveLeft ? -30 : 30;
-        action.yawDelta = curveLeft ? 6 : -6;
-      }
+      if (shouldCollectWoodDrop) {
+        const dropCross = (s.lookX * s.nearestDroppedItemDz) - (s.lookZ * s.nearestDroppedItemDx);
+        const dropYaw = clamp(Math.round(dropCross * 6), -7, 7);
+        action.attack = false;
+        action.forward = true;
+        action.sprint = !lowHp;
+        action.jump = s.horizontalSpeed < 0.05;
+        action.sneak = false;
+        action.yawDelta = dropYaw;
+        // Look slightly downward so it tracks item entities resting on the ground
+        // instead of staring at tree height.
+        action.pitchDelta = clamp((6 - s.pitch) / 3, -6, 6);
+        action.durationTicks = 5;
+        noteParts.push('General1 routine: walking over to collect logs knocked to the ground.');
+      } else if (treeInSight || leavesInSight || closeHarvestable) {
+        action.attack = true;
+        action.hotbarSlot = s.axeSlot >= 0 ? s.axeSlot : (s.swordSlot >= 0 ? s.swordSlot : s.pickaxeSlot);
+        action.forward = s.focusedDistance > 3.2;
+        action.sprint = false;
+        action.jump = false;
+        action.sneak = false;
+        action.durationTicks = 6;
+        action.yawDelta = 0;
+        action.moveAngle = 0;
+        if (leavesInSight && !treeInSight) {
+          // Leaves are blocking the rest of the trunk. Keep swinging to clear them
+          // and alternate pitch up/down so the crosshair sweeps the canopy and finds
+          // logs hidden above or the stump hidden below instead of giving up.
+          const scanUp = (pulse % 10) < 5;
+          action.pitchDelta = clamp(((scanUp ? -12 : 4) - s.pitch) / 3, -6, 6);
+          noteParts.push('General1 routine: clearing leaves and scanning up/down for the rest of the trunk.');
+        } else {
+          noteParts.push('General1 routine: harvesting the log in sight.');
+        }
+      } else {
+        action.attack = false;
+        action.hotbarSlot = s.axeSlot >= 0 ? s.axeSlot : (s.swordSlot >= 0 ? s.swordSlot : s.pickaxeSlot);
+        action.forward = true;
+        action.sprint = !lowHp;
+        action.jump = (s.horizontalSpeed < 0.06 || likelyStuck || obstacleAhead);
+        action.sneak = false;
+        action.durationTicks = 6;
+        action.yawDelta = curveLeft ? 2 : -2;
+        action.moveAngle = curveLeft ? -10 : 10;
 
-      if (!treeInSight && likelyStuck && pulse % 8 === 0) {
-        action.yawDelta = (pulse % 16 === 0) ? 16 : -16;
-        action.left = (pulse % 16 === 0);
-        action.right = !action.left;
-        action.moveAngle = action.left ? -35 : 35;
+        if (obstacleAhead) {
+          action.left = curveLeft;
+          action.right = !curveLeft;
+          action.moveAngle = curveLeft ? -30 : 30;
+          action.yawDelta = curveLeft ? 6 : -6;
+        }
+
+        if (likelyStuck && pulse % 8 === 0) {
+          action.yawDelta = (pulse % 16 === 0) ? 16 : -16;
+          action.left = (pulse % 16 === 0);
+          action.right = !action.left;
+          action.moveAngle = action.left ? -35 : 35;
+        }
+        if (s.pitch > 28) {
+          action.pitchDelta = clamp((10 - s.pitch) / 2, -8, 8);
+        }
+        noteParts.push('General1 routine: obstacle-aware tree routing with curved movement.');
       }
-      if (s.pitch > 28) {
-        action.pitchDelta = clamp((10 - s.pitch) / 2, -8, 8);
-      }
-      noteParts.push('General1 routine: obstacle-aware tree routing with curved movement and active close-range harvesting.');
     } else {
-      action.forward = true;
-      action.sprint = /\b(run|sprint|fast)\b/.test(text) && !lowHp;
-      action.attack = /\b(mine|dig|break|chop|harvest)\b/.test(text);
-      action.use = /\b(place|build|use|block)\b/.test(text);
-      action.hotbarSlot = action.use ? s.blockSlot : (action.attack ? (s.pickaxeSlot >= 0 ? s.pickaxeSlot : s.axeSlot) : -1);
-      action.durationTicks = 8;
-      const wantsExploration = /\b(explore|search|walk around|cave|look around|patrol)\b/.test(text);
-      const likelyStuck = s.onGround && s.horizontalSpeed < 0.025 && !edgeRisk;
-      if (wantsExploration && likelyStuck && pulse % 8 === 0) {
-        action.yawDelta = (pulse % 16 === 0) ? 10 : -10;
-        action.jump = true;
+      const explicitBreak = /\b(mine|dig|break|chop|harvest)\b/.test(text);
+      const explicitPlace = /\b(place|build|use|block)\b/.test(text);
+
+      if (shouldCollectWoodDrop) {
+        const dropCross = (s.lookX * s.nearestDroppedItemDz) - (s.lookZ * s.nearestDroppedItemDx);
+        const dropYaw = clamp(Math.round(dropCross * 6), -7, 7);
+        action.forward = true;
+        action.sprint = /\b(run|sprint|fast)\b/.test(text) && !lowHp;
+        action.attack = false;
+        action.use = false;
+        action.jump = s.horizontalSpeed < 0.05;
+        action.yawDelta = dropYaw;
+        action.pitchDelta = clamp((6 - s.pitch) / 3, -6, 6);
+        action.durationTicks = 5;
+        noteParts.push('General mode: walking over to pick up logs knocked loose from the tree.');
+      } else if (treeInSight || leavesInSight || (closeHarvestable && (explicitBreak || wantsWood))) {
+        action.attack = true;
+        action.use = false;
+        action.hotbarSlot = s.axeSlot >= 0 ? s.axeSlot : s.pickaxeSlot;
+        action.forward = s.focusedDistance > 3.2;
+        action.sprint = false;
+        action.durationTicks = 6;
+        if (leavesInSight && !treeInSight) {
+          const scanUp = (pulse % 10) < 5;
+          action.pitchDelta = clamp(((scanUp ? -12 : 4) - s.pitch) / 3, -6, 6);
+          noteParts.push('General mode: clearing leaves in the way and scanning for the rest of the trunk.');
+        } else {
+          action.pitchDelta = s.focusedDistance > 3.2 ? clamp((-s.pitch) / 3, -5, 5) : 0;
+          noteParts.push('General mode: chopping the tree/log in sight.');
+        }
+      } else {
+        action.forward = true;
+        action.sprint = /\b(run|sprint|fast)\b/.test(text) && !lowHp;
+        action.attack = explicitBreak;
+        action.use = explicitPlace;
+        action.hotbarSlot = action.use ? s.blockSlot : (action.attack ? (s.pickaxeSlot >= 0 ? s.pickaxeSlot : s.axeSlot) : -1);
+        action.durationTicks = 8;
+        action.jump = (s.horizontalSpeed < 0.06) || (likelyStuck && obstacleAhead);
+        if (obstacleAhead) {
+          action.left = curveLeft;
+          action.right = !curveLeft;
+          action.moveAngle = curveLeft ? -30 : 30;
+          action.yawDelta = curveLeft ? 6 : -6;
+        } else if (likelyStuck && pulse % 8 === 0) {
+          action.yawDelta = (pulse % 16 === 0) ? 10 : -10;
+          action.jump = true;
+        }
+        noteParts.push('General mode: exploring objective path with obstacle avoidance.');
       }
-      noteParts.push('General mode: exploring objective path.');
     }
   }
 
@@ -2831,12 +3057,18 @@ function buildMinecraftAction(objective, state = {}, sessionCtx = {}) {
     }
   }
 
-  // ── Auto-eat: eat best food when HP is low ─────────────────────────────────
+  // ── Auto-eat: eat best food when HP is low, OR proactively when hunger is low ──
+  // Previously this only ever checked s.food alongside a low-HP condition, so a bot
+  // sitting at full health but with hunger ticking down toward 0 would never eat until
+  // it actually started taking starvation damage. Food is now also treated as its own
+  // trigger so hunger gets managed before it becomes an HP problem.
   const canEat = s.utilityFoodSlot >= 0;
   const criticalEat = canEat && s.health <= eatCriticalHpThreshold; // learned threshold, defaults to 5 hearts
   const sustainEat = canEat && s.health <= eatRecoverHpThreshold && s.food < 20;
   const shouldHoldEatLock = lowHpEatLockActive && s.health <= eatRecoverHpThreshold;
-  if (criticalEat || sustainEat || shouldHoldEatLock) {
+  const hungerCritical = canEat && s.food <= 6; // below this, sprinting is disabled and starvation risk begins
+  const hungerLow = canEat && s.food <= 14 && !enemyVeryClose && !severeDanger; // proactive top-up when it's safe to pause
+  if (criticalEat || sustainEat || shouldHoldEatLock || hungerCritical || hungerLow) {
     action.use = true;
     action.attack = false;
     action.hotbarSlot = s.utilityFoodSlot;
@@ -2847,12 +3079,16 @@ function buildMinecraftAction(objective, state = {}, sessionCtx = {}) {
     action.left = false;
     action.right = false;
     action.jump = false;
-    action.durationTicks = (criticalEat || shouldHoldEatLock) ? Math.max(10, eatLockTicks + 1) : 8;
+    action.durationTicks = (criticalEat || shouldHoldEatLock || hungerCritical) ? Math.max(10, eatLockTicks + 1) : 8;
     noteParts.push(criticalEat
       ? `Auto-eat critical: HP=${s.health.toFixed(1)} (threshold=${eatCriticalHpThreshold.toFixed(1)}), hard-prioritizing food over combat.`
       : shouldHoldEatLock
         ? `Auto-eat lock: keeping food out until stabilized (hp=${s.health.toFixed(1)}).`
-        : `Auto-eat sustain: topping up while recovering (hp=${s.health.toFixed(1)}, food=${s.food}).`);
+        : hungerCritical
+          ? `Auto-eat hunger-critical: food=${s.food} is dangerously low regardless of HP, eating now.`
+          : sustainEat
+            ? `Auto-eat sustain: topping up while recovering (hp=${s.health.toFixed(1)}, food=${s.food}).`
+            : `Auto-eat proactive: food=${s.food} is getting low, topping up while it's safe.`);
   }
 
   if (!Object.values(action).some(v => v === true)) {
@@ -2871,7 +3107,7 @@ function getClientIp(req) {
   }
   return req.ip || req.socket?.remoteAddress || 'unknown';
 }
-const MAX_SESSION_ID_LENGTH = 128;
+
 function validateSessionId(sessionId) {
   if (!sessionId) {
     return 'sessionId is required';
@@ -3827,6 +4063,7 @@ app.post(['/mc-agent', '/mc'], checkApiKey, checkRateLimit, (req, res) => {
       retaliationUntilTick: Number.isFinite(nextRetaliationUntilTick) ? nextRetaliationUntilTick : -1,
       lowHpEatUntilTick: Number.isFinite(nextLowHpEatUntilTick) ? nextLowHpEatUntilTick : -1,
       lastPotTick: Number(existingCtx.lastPotTick || -9999),
+      lastWoodChopTick: Number(existingCtx.lastWoodChopTick || -9999),
       goals: {
         prot4Diamond: /\b(protection ?4|prot ?4|full diamond|diamond armor)\b/.test(objective),
         netherite: /\b(netherite|netherite upgrade|smithing template)\b/.test(objective),
@@ -3852,6 +4089,10 @@ app.post(['/mc-agent', '/mc'], checkApiKey, checkRateLimit, (req, res) => {
       windMaceComboStage: Number(existingCtx.windMaceComboStage || 0)
     };
     const decision = buildMinecraftAction(objective, state, nextCtx);
+    const focusedEntityNow = String(state?.focusedEntity || '').toLowerCase();
+    const choppedWoodNow = Boolean(decision?.action?.attack)
+      && /log|wood|tree|oak|birch|spruce|jungle|acacia|dark_oak|mangrove|cherry|leaves/.test(focusedEntityNow);
+    const nextWoodChopTick = choppedWoodNow ? nextCtx.tickCounter : Number(existingCtx.lastWoodChopTick || -9999);
     const previousHotbarSlot = Number(existingCtx.lastHotbarSlot);
     const previousHotbarChangeTick = Number(existingCtx.lastHotbarChangeTick || -9999);
     const desiredHotbarSlot = Number(decision?.action?.hotbarSlot);
@@ -3919,6 +4160,7 @@ app.post(['/mc-agent', '/mc'], checkApiKey, checkRateLimit, (req, res) => {
       ...nextCtx,
       lastPotTick: usedCombatPotion ? nextCtx.tickCounter : nextCtx.lastPotTick,
       lowHpEatUntilTick: Number.isFinite(persistedLowHpEatUntilTick) ? persistedLowHpEatUntilTick : -1,
+      lastWoodChopTick: Number.isFinite(nextWoodChopTick) ? nextWoodChopTick : -9999,
       windMaceComboStage: nextWindMaceStage,
       lastHotbarSlot: hasFinalHotbar ? finalHotbarSlot : (hasPreviousHotbar ? previousHotbarSlot : -1),
       lastHotbarChangeTick: didHotbarChange ? nextCtx.tickCounter : previousHotbarChangeTick,
@@ -4099,6 +4341,18 @@ httpServer.on('error', (error) => {
   });
   process.exit(1);
 });
+
+function shutdownGracefully(signal) {
+  console.log(`[shutdown] received ${signal}, flushing mc-agent memory to disk`);
+  if (mcMemorySaveTimer) {
+    clearTimeout(mcMemorySaveTimer);
+    mcMemorySaveTimer = null;
+  }
+  persistMcMemoryToDisk();
+  process.exit(0);
+}
+process.on('SIGINT', () => shutdownGracefully('SIGINT'));
+process.on('SIGTERM', () => shutdownGracefully('SIGTERM'));
 function generateHelpfulDirectAnswer(userMessage, webContext) {
   const text = normalizeText(userMessage).toLowerCase();
   const answers = [
