@@ -169,11 +169,6 @@ const state = {
   lastCombatStrafeSwitchAt: 0,
   nextMicroPauseAt: 0,
   lastSprintJumpAt: 0,
-  noSprintUntil: 0,
-  huntCompassGranted: false,
-  huntTargetKilled: false,
-  huntLastSeenAt: 0,
-  huntDimensionSearchStartedAt: 0,
   concurrentTasks: [],
   microPauseUntil: 0,
   strafeLockDir: '',
@@ -663,24 +658,6 @@ function objectiveText() {
   return normalizeText(state.objective).toLowerCase();
 }
 
-function parseHuntObjective() {
-  const raw = normalizeText(state.objective);
-  const match = raw.match(/\bhunt\s+([A-Za-z0-9_]+)/i);
-  if (!match) return null;
-  return normalizeText(match[1]);
-}
-
-function isNamedHuntObjective() {
-  return Boolean(parseHuntObjective());
-}
-
-function resetHuntState() {
-  state.huntCompassGranted = false;
-  state.huntTargetKilled = false;
-  state.huntLastSeenAt = 0;
-  state.huntDimensionSearchStartedAt = 0;
-}
-
 function isBasefinderObjective() {
   const text = objectiveText();
   return /\bbasefinder\b/.test(text);
@@ -787,17 +764,6 @@ function hasCraftObjective() {
 function isCombatObjective() {
   const text = objectiveText();
   return /\battack\b|\bkill\b|\bhunt\b|\bpvp\b|\bfight\b|\bcombat\b|\braid\b/.test(text);
-}
-
-function getPlayerEntityByName(bot, username) {
-  const wanted = normalizeText(username).toLowerCase();
-  if (!wanted) return null;
-  return getNearestEntity(bot, (entity) =>
-    entity?.type === 'player'
-      && normalizeText(entity?.username).toLowerCase() === wanted
-      && entity?.id !== bot.entity?.id
-      && entity?.position
-  ).entity;
 }
 
 function isPrisonEscapeObjective() {
@@ -995,51 +961,7 @@ function canLikelyWinFight(bot, entity, distance) {
   const myHealth = Number(bot.health || 20);
   const enemyHealth = Number(entity?.health || 10);
   const closeEnough = Number(distance) > 0 && Number(distance) < 10;
-  const myGear = estimateBotCombatPower(bot);
-  const enemyGear = estimateEntityCombatPower(entity);
-  const healthEdge = myHealth - enemyHealth;
-  const gearEdge = myGear - enemyGear;
-  return closeEnough && myHealth >= 7 && (healthEdge >= -1 || myHealth >= 14) && (gearEdge >= -8 || healthEdge >= 4);
-}
-
-function armorTierScore(name) {
-  const lower = String(name || '').toLowerCase();
-  const materialScores = {
-    netherite: 7,
-    diamond: 6,
-    iron: 5,
-    chainmail: 4,
-    golden: 3,
-    gold: 3,
-    leather: 2
-  };
-  const tier = Object.keys(materialScores).find((material) => lower.startsWith(`${material}_`));
-  return tier ? materialScores[tier] : 0;
-}
-
-function estimateEntityCombatPower(entity) {
-  if (!entity) return 0;
-  let score = meleeWeaponScore(entity.heldItem?.name);
-  const equipment = Array.isArray(entity.equipment) ? entity.equipment : [];
-  for (const item of equipment) {
-    const name = String(item?.name || '').toLowerCase();
-    if (/_helmet|_chestplate|_leggings|_boots/.test(name)) {
-      score += armorTierScore(name) * 12;
-    }
-  }
-  return score;
-}
-
-function estimateBotCombatPower(bot) {
-  if (!bot?.inventory) return meleeWeaponScore(bot?.heldItem?.name);
-  let score = meleeWeaponScore(bot.heldItem?.name);
-  for (const slot of [5, 6, 7, 8]) {
-    const name = String(bot.inventory?.slots?.[slot]?.name || '').toLowerCase();
-    if (/_helmet|_chestplate|_leggings|_boots/.test(name)) {
-      score += armorTierScore(name) * 12;
-    }
-  }
-  return score;
+  return closeEnough && myHealth >= 6 && (myHealth >= enemyHealth - 2 || myHealth >= 14);
 }
 
 function isThreatReachable(bot, entity, maxYDiff = 3.25) {
@@ -1124,7 +1046,6 @@ function selectCombatTarget(bot, allowPlayerAggro = false) {
         && entity?.username !== bot.username
         && entity?.position
         && isThreatReachable(bot, entity, 4.5)
-        && canLikelyWinFight(bot, entity, bot.entity.position.distanceTo(entity.position))
     ).entity;
     if (playerThreat) return playerThreat;
   }
@@ -1769,23 +1690,6 @@ async function craftFirstAvailable(bot, itemNames, count = 1, craftingTable = nu
   return false;
 }
 
-async function ensureCombatHandReady(bot) {
-  const heldName = String(bot?.heldItem?.name || '').toLowerCase();
-  if (Date.now() < Number(state.eatingUntil || 0)) return !isLikelyPlaceableBlockName(heldName);
-  const equipped = await equipBestMeleeWeapon(bot);
-  if (equipped) return true;
-  if (isLikelyPlaceableBlockName(heldName) || heldName === 'shield') {
-    try {
-      if (typeof bot.unequip === 'function') {
-        await bot.unequip('hand');
-      }
-    } catch {
-      // ignore unequip failure
-    }
-  }
-  return true;
-}
-
 async function ensureCraftingTablePlaced(bot) {
   const existing = findPlacedCraftingTable(bot, 20);
   if (existing) return existing;
@@ -2294,14 +2198,8 @@ async function runGeneral1Progression(bot) {
 
   const general1EnsureTable = async () => {
     if (!inventoryHasItem(bot, 'crafting_table') && !findPlacedCraftingTable(bot, 16)) {
-      if (progress.plankCount < 4) {
-        return { handled: false, table: null };
-      }
       state.lastNote = 'general1/table: crafting';
-      const crafted = await craftItemByName(bot, 'crafting_table', 1, null);
-      if (!crafted) {
-        return { handled: false, table: null };
-      }
+      await craftItemByName(bot, 'crafting_table', 1, null);
       return { handled: true, table: null };
     }
     const table = await ensureCraftingTablePlaced(bot);
@@ -2312,10 +2210,11 @@ async function runGeneral1Progression(bot) {
     return { handled: false, table };
   };
 
+  const tableStep = await general1EnsureTable();
+  if (tableStep.handled) return true;
+  const table = tableStep.table;
+
   const general1WoodPick = async () => {
-    const tableStep = await general1EnsureTable();
-    if (tableStep.handled) return true;
-    const table = tableStep.table;
     if (inventoryHasItem(bot, 'wooden_pickaxe')) return false;
     state.lastNote = 'general1/wood_pick: crafting';
     if (progress.stickCount < 2) {
@@ -2339,9 +2238,6 @@ async function runGeneral1Progression(bot) {
   };
 
   const general1StoneTools = async () => {
-    const tableStep = await general1EnsureTable();
-    if (tableStep.handled) return true;
-    const table = tableStep.table;
     const hasStonePickaxe = inventoryHasItem(bot, 'stone_pickaxe');
     const hasStoneAxe = inventoryHasItem(bot, 'stone_axe');
     if (hasStonePickaxe && hasStoneAxe) return false;
@@ -2378,9 +2274,6 @@ async function runGeneral1Progression(bot) {
     state.lastNote = 'general1/smelt: iron';
     const furnace = findNearestBlockByNames(bot, ['furnace'], 16);
     if (!furnace) {
-      const tableStep = await general1EnsureTable();
-      if (tableStep.handled) return true;
-      const table = tableStep.table;
       if (!inventoryHasItem(bot, 'furnace')) {
         await craftItemByName(bot, 'furnace', 1, table);
         return true;
@@ -2436,9 +2329,6 @@ async function runGeneral1Progression(bot) {
   };
 
   const general1IronPick = async () => {
-    const tableStep = await general1EnsureTable();
-    if (tableStep.handled) return true;
-    const table = tableStep.table;
     if (inventoryHasItem(bot, 'iron_pickaxe')) return false;
     state.lastNote = 'general1/iron_pick: crafting';
     if (progress.stickCount < 2) {
@@ -2481,89 +2371,6 @@ async function runGeneral1Progression(bot) {
   return true;
 }
 
-async function tryGrantHuntCompass(bot, targetName) {
-  if (state.huntCompassGranted || !bot?.chat || !targetName) return false;
-  state.huntCompassGranted = true;
-  try {
-    bot.chat(`/give ${bot.username} compass 1`);
-    state.lastNote = `hunt: requested compass for ${targetName}`;
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-async function runHuntPlayerMode(bot) {
-  const targetName = parseHuntObjective();
-  if (!targetName) return false;
-
-  const now = Date.now();
-  const target = getPlayerEntityByName(bot, targetName);
-  const sameNameRevenge = normalizeText(target?.username || '').toLowerCase() === targetName.toLowerCase();
-
-  await tryGrantHuntCompass(bot, targetName);
-
-  if (target?.position) {
-    state.huntLastSeenAt = now;
-    state.huntDimensionSearchStartedAt = 0;
-    state.huntTargetKilled = false;
-    state.lastNote = `hunt: tracking ${targetName}`;
-
-    const dist = bot.entity.position.distanceTo(target.position);
-    const revengeActive = state.revengeTargetId === target.id && now < Number(state.revengeExpireAt || 0);
-    const canTakeFight = canLikelyWinFight(bot, target, dist);
-    if (!canTakeFight && !revengeActive) {
-      state.lastNote = `hunt: gearing for ${targetName}`;
-      return runGeneral1Progression(bot);
-    }
-
-    state.helperActive = true;
-    return chaseAndAttack(bot, target, sameNameRevenge);
-  }
-
-  // If we lost the player, keep gearing up and start dimension search heuristics.
-  const huntGearScore = estimateBotCombatPower(bot);
-  if (huntGearScore < 140) {
-    state.lastNote = `hunt: gearing before re-engaging ${targetName}`;
-    return runGeneral1Progression(bot);
-  }
-
-  if (!state.huntDimensionSearchStartedAt) {
-    state.huntDimensionSearchStartedAt = now;
-  }
-
-  const dimension = String(bot.game?.dimension || 'overworld').toLowerCase();
-  const netherPortal = findNearestBlockByNames(bot, ['nether_portal'], 48);
-  const endPortal = findNearestBlockByNames(bot, ['end_portal_frame', 'end_portal'], 64);
-
-  if (!dimension.includes('nether') && now - state.huntDimensionSearchStartedAt < 45000) {
-    if (netherPortal && bot.pathfinder && state.movements) {
-      bot.pathfinder.setMovements(state.movements);
-      bot.pathfinder.setGoal(new GoalNear(netherPortal.position.x, netherPortal.position.y, netherPortal.position.z, 1));
-      state.lastNote = `hunt: searching nether for ${targetName}`;
-      return true;
-    }
-  }
-
-  if (!dimension.includes('end') && now - state.huntDimensionSearchStartedAt >= 45000) {
-    if (endPortal && bot.pathfinder && state.movements) {
-      bot.pathfinder.setMovements(state.movements);
-      bot.pathfinder.setGoal(new GoalNear(endPortal.position.x, endPortal.position.y, endPortal.position.z, 2));
-      state.lastNote = `hunt: searching end for ${targetName}`;
-      return true;
-    }
-  }
-
-  if (bot.pathfinder && state.movements) {
-    const roamX = bot.entity.position.x + (Math.random() * 42 - 21);
-    const roamZ = bot.entity.position.z + (Math.random() * 42 - 21);
-    bot.pathfinder.setMovements(state.movements);
-    bot.pathfinder.setGoal(new GoalNear(roamX, bot.entity.position.y, roamZ, 2));
-  }
-  state.lastNote = `hunt: searching for ${targetName}`;
-  return true;
-}
-
 function setupMovements(bot) {
   if (!bot.pathfinder) return;
   const movements = new Movements(bot);
@@ -2587,7 +2394,6 @@ async function chaseAndAttack(bot, target) {
   bot.pathfinder.setMovements(state.movements);
   bot.pathfinder.setGoal(new GoalFollow(target, 1.5), true);
   const dist = bot.entity.position.distanceTo(target.position);
-  await ensureCombatHandReady(bot);
 
   // Only swap weapons when not eating — equip() cancels the eat animation
   const isEating = Date.now() < Number(state.eatingUntil || 0);
@@ -2627,7 +2433,7 @@ async function chaseAndAttack(bot, target) {
   }
 
   const now = Date.now();
-  if (now - Number(state.lastCombatStrafeSwitchAt || 0) > randomBetween(220, 420)) {
+  if (now - Number(state.lastCombatStrafeSwitchAt || 0) > randomBetween(340, 640)) {
     state.lastCombatStrafeSwitchAt = now;
     state.combatStrafeDir = Math.random() > 0.5 ? 'left' : 'right';
   }
@@ -2648,10 +2454,10 @@ async function chaseAndAttack(bot, target) {
     // ignore look failure
   }
 
-  bot.setControlState('sprint', dist > 2.2 && now >= Number(state.noSprintUntil || 0));
+  bot.setControlState('sprint', dist > 2.2);
   bot.setControlState('forward', dist > 1.55);
   bot.setControlState('back', dist < 1.15);
-  const shouldStrafe = dist > 1.8 && dist < 4.8;
+  const shouldStrafe = dist > 2.35;
   // 45-degree diagonal: alternate strafe side every 600ms — forward+strafe = sqrt(2)x speed
   const chaseSide = Math.floor(Date.now() / 600) % 2 === 0 ? 'left' : 'right';
   const strafeSide = (state.combatStrafeDir === 'left' || state.combatStrafeDir === 'right')
@@ -2686,14 +2492,12 @@ async function chaseAndAttack(bot, target) {
     }
     // Snap look to target then attack — use lookAt for reliable aim
     try {
-      bot.setControlState('sprint', false);
       await bot.lookAt(target.position.offset(0, target.height ? target.height * 0.6 : 1.2, 0), true);
     } catch {}
     // Always attack if in range, even if aim is not perfect
     try {
       bot.attack(target);
       state.lastAttackAt = Date.now();
-      state.noSprintUntil = Date.now() + 180;
     } catch {}
   }
   return true;
@@ -3102,7 +2906,6 @@ async function runAutonomousHelpers(bot) {
 
 
   const combatObjective = isCombatObjective();
-  const general1Objective = isGeneral1Objective();
   const prisonEscapeObjective = isPrisonEscapeObjective();
   const revengeTarget = getEntityById(bot, state.revengeTargetId);
   // Always prioritize revenge target if set and not expired
@@ -3144,11 +2947,6 @@ async function runAutonomousHelpers(bot) {
     trySprintJump(bot, 120, 170);
     state.helperActive = true;
     return true;
-  }
-
-  if (general1Objective) {
-    state.helperActive = true;
-    return runGeneral1Progression(bot);
   }
 
   // Mild anti-idle fallback: if no threat and no recent backend decision, nudge exploration.
@@ -3572,9 +3370,6 @@ function applyAction(bot, action = {}) {
       setControlStateSmoothed(bot, key, desired, 170, 110);
       continue;
     }
-    if (key === 'sprint' && now < Number(state.noSprintUntil || 0)) {
-      desired = false;
-    }
     if (key === 'sprint' || key === 'sneak') {
       setControlStateSmoothed(bot, key, desired, 140, 100);
       continue;
@@ -3672,13 +3467,13 @@ function applyAction(bot, action = {}) {
     }
 
     const now = Date.now();
-    if (target && target.position && now - Number(state.lastCombatStrafeSwitchAt || 0) > randomBetween(220, 420)) {
+    if (target && target.position && now - Number(state.lastCombatStrafeSwitchAt || 0) > randomBetween(360, 660)) {
       state.lastCombatStrafeSwitchAt = now;
       state.combatStrafeDir = Math.random() > 0.5 ? 'left' : 'right';
     }
     if (target && target.position && bot.entity.position.distanceTo(target.position) <= 4.4) {
       const closeDist = bot.entity.position.distanceTo(target.position);
-      const strafeNow = closeDist > 1.8 && closeDist < 4.8;
+      const strafeNow = closeDist > 2.45;
       action.left = strafeNow && state.combatStrafeDir === 'left';
       action.right = strafeNow && state.combatStrafeDir === 'right';
       action.forward = closeDist > 1.45;
@@ -3695,14 +3490,12 @@ function applyAction(bot, action = {}) {
       // Always snap look to target before deciding to attack
       const aimPos = target.position.offset(0, target.height ? target.height * 0.6 : 1.2, 0);
       bot.lookAt(aimPos, true).catch(() => {});
-      if (!targetAimAligned(bot, target, 0.94)) {
+      if (!targetAimAligned(bot, target, 0.82)) {
         // still rotating — give it one tick before attacking
         state.nextAttackAllowedAt = Date.now() + randomBetween(30, 60);
       } else {
-        bot.setControlState('sprint', false);
         bot.attack(target);
         state.lastAttackAt = Date.now();
-        state.noSprintUntil = Date.now() + 180;
         state.nextAttackAllowedAt = Date.now() + randomBetween(90, 180);
       }
     }
@@ -3866,7 +3659,6 @@ wireBotEvents = function wireBotEvents(bot) {
     state.kbRecoveryUntil = Math.max(state.kbRecoveryUntil, now + randomBetween(450, 900));
     state.kbStrafeUntil = now + randomBetween(200, 460);
     state.kbStrafeDir = Math.random() > 0.5 ? 'left' : 'right';
-    state.noSprintUntil = Math.max(Number(state.noSprintUntil || 0), now + randomBetween(480, 760));
     state.nextAttackAllowedAt = Math.max(state.nextAttackAllowedAt, now + randomBetween(220, 420));
 
     try {

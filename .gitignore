@@ -33,6 +33,9 @@ backend.log
 .DS_Store
 Thumbs.db
 
+# Env files
+.env
+
 # Gradle
 .gradle/
 build/

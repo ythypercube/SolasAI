@@ -301,6 +301,59 @@ function trySprintJump(bot, minMs = 100, maxMs = 140) {
   return true;
 }
 
+const UNSTUCK_CHECK_INTERVAL_MS = 600;
+const UNSTUCK_MIN_MOVE_DISTANCE = 0.12;
+const UNSTUCK_NUDGE_COOLDOWN_MS = 1500;
+
+// Detects when the bot is trying to move (forward/back/strafe) but hasn't
+// actually changed position for a while, and nudges it free with a jump +
+// short strafe so movement/mining/combat don't get permanently wedged.
+function applyUnstuckLogic(bot, action) {
+  try {
+    if (!bot?.entity?.position) return;
+    const wantsToMove = Boolean(action.forward || action.back || action.left || action.right);
+    const now = Date.now();
+
+    if (!state.unstuckLastPos) {
+      state.unstuckLastPos = bot.entity.position.clone();
+      state.unstuckLastCheckAt = now;
+      return;
+    }
+
+    if (now - Number(state.unstuckLastCheckAt || 0) < UNSTUCK_CHECK_INTERVAL_MS) return;
+
+    const dx = bot.entity.position.x - state.unstuckLastPos.x;
+    const dy = bot.entity.position.y - state.unstuckLastPos.y;
+    const dz = bot.entity.position.z - state.unstuckLastPos.z;
+    const moved = Math.hypot(dx, dz) + Math.abs(dy);
+
+    state.unstuckLastPos = bot.entity.position.clone();
+    state.unstuckLastCheckAt = now;
+
+    if (!wantsToMove || state.miningInProgress || moved >= UNSTUCK_MIN_MOVE_DISTANCE) {
+      return;
+    }
+
+    if (now - Number(state.lastStuckAt || 0) < UNSTUCK_NUDGE_COOLDOWN_MS) return;
+    state.lastStuckAt = now;
+
+    if (bot.entity.onGround) {
+      bot.setControlState('jump', true);
+      setTimeout(() => {
+        try { bot.setControlState('jump', false); } catch {}
+      }, 150);
+    }
+    // Briefly strafe sideways to break out of corner/block snags.
+    const dir = Math.random() < 0.5 ? 'left' : 'right';
+    bot.setControlState(dir, true);
+    setTimeout(() => {
+      try { bot.setControlState(dir, false); } catch {}
+    }, 220);
+  } catch {
+    // Best-effort recovery only; never let this crash the control loop.
+  }
+}
+
 function randomBetween(min, max) {
   return min + Math.random() * (max - min);
 }
