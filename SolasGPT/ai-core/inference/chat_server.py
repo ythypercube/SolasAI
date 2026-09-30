@@ -559,11 +559,20 @@ COMMON_ENGLISH_WORDS = {
 }
 
 
+SHORT_ENGLISH_WORDS = {
+    'a', 'i', 'to', 'of', 'in', 'on', 'at', 'by', 'an', 'or', 'so', 'no', 'do', 'if', 'is',
+    'am', 'we', 'he', 'my', 'us', 'be', 'as', 'it', 'up', 'go',
+}
+
+
 def looks_like_real_words(text: str, min_ratio: float = 0.4) -> bool:
     words = re.findall(r"[a-zA-Z']+", text.lower())
     if len(words) < 4:
         return True  # too short to judge reliably
-    recognized = sum(1 for w in words if len(w) <= 2 or w in COMMON_ENGLISH_WORDS)
+    recognized = sum(
+        1 for w in words
+        if w in COMMON_ENGLISH_WORDS or (len(w) <= 2 and w in SHORT_ENGLISH_WORDS)
+    )
     return (recognized / len(words)) >= min_ratio
 
 
@@ -661,29 +670,30 @@ def answer_message(user_message: str, history: list[str]) -> str:
 def detect_context(user_message: str) -> str:
     """Detect if the message is about coding, Minecraft, or general chat."""
     msg_lower = user_message.lower()
-    
-    # Code-related keywords
+
+    # Code-related keywords. Deliberately excludes generic English words like
+    # "if"/"for" which would misfire on ordinary sentences ("thanks for...").
     code_keywords = [
         'python', 'code', 'function', 'loop', 'variable', 'class', 'program',
-        'error', 'debug', 'syntax', 'import', 'def', 'return', 'if', 'for', 'while',
-        'list', 'dict', 'string', 'int', 'array', 'algorithm', 'script', 'programming'
+        'error', 'debug', 'syntax', 'import', 'def', 'return',
+        'list', 'dict', 'string', 'array', 'algorithm', 'script', 'programming'
     ]
-    
+
     # Minecraft-related keywords
     minecraft_keywords = [
         'minecraft', 'diamond', 'craft', 'mine', 'block', 'mob', 'creeper',
         'ender', 'dragon', 'farm', 'redstone', 'pickaxe', 'ore', 'spawn',
         'biome', 'nether', 'village', 'enchant', 'potion', 'build', 'survival'
     ]
-    
-    # Check for code patterns
-    if any(keyword in msg_lower for keyword in code_keywords):
+
+    # Word-boundary matching: plain substring checks falsely matched things
+    # like "if" inside "life" or "int" inside "into".
+    if any(re.search(rf'\b{re.escape(keyword)}\b', msg_lower) for keyword in code_keywords):
         return '[CODE]'
-    
-    # Check for Minecraft patterns
-    if any(keyword in msg_lower for keyword in minecraft_keywords):
+
+    if any(re.search(rf'\b{re.escape(keyword)}\b', msg_lower) for keyword in minecraft_keywords):
         return '[MINECRAFT]'
-    
+
     # Default to chat
     return '[CHAT]'
 
