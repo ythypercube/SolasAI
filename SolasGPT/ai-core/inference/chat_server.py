@@ -457,6 +457,7 @@ def retrieval_reply(user_message: str, history: list[str]) -> tuple[str | None, 
         return None, 0.0
 
     best_answer = None
+    best_question = None
     best_score = 0.0
     for index, (question, answer, pair_context) in enumerate(knowledge_pairs):
         # Only consider pairs with matching context
@@ -472,6 +473,15 @@ def retrieval_reply(user_message: str, history: list[str]) -> tuple[str | None, 
         if score > best_score:
             best_score = score
             best_answer = answer
+            best_question = question
+
+    # A short question can share just one rare (high-IDF) word with a totally
+    # unrelated query and still score a deceptively high cosine similarity.
+    # Require real word overlap with the matched question before trusting it.
+    if best_answer is not None and best_question is not None:
+        jaccard = overlap_score(query, best_question)
+        if jaccard < 0.2:
+            best_score *= max(0.0, jaccard / 0.2)
 
     return best_answer, min(best_score, 1.0)
 
@@ -617,6 +627,18 @@ def assume_high_probability_reply(user_message: str, best_answer: str | None = N
     if not compact:
         return 'I will assume you want a clear answer. Here is the best approach: define your goal, provide key details, and I will give a direct solution.'
 
+    # Questions asking for specific facts/stats (names, dates, current events)
+    # are things this model has no reliable data for, better to say so than
+    # to guess at "intent" for what is really just a lookup question.
+    looks_like_factual_question = bool(re.match(
+        r'^(who|what|when|where|which|how (many|much|old|long))\b', compact
+    ))
+    if looks_like_factual_question:
+        return (
+            "I don't have reliable up-to-date facts or stats for that. "
+            "I can help with general knowledge, Python, Minecraft, or just chatting."
+        )
+
     topic = re.sub(r'^(what|who|when|where|which|why|how|can|could|would|should|is|are|do|does|did)\b\s*', '', compact, flags=re.IGNORECASE).strip(' ?.!')
     if not topic:
         topic = compact[:60]
@@ -661,9 +683,9 @@ def answer_message(user_message: str, history: list[str]) -> str:
     generation_is_bad = looks_bad(reply) or low_quality
 
     if generation_is_bad:
-        if best_answer and score >= 0.25:
+        if best_answer and score >= 0.35:
             return clean_reply(best_answer)
-        return assume_high_probability_reply(user_message, best_answer)
+        return assume_high_probability_reply(user_message, None)
     return clean_reply(reply)
 
 
