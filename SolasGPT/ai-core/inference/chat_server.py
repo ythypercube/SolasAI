@@ -536,6 +536,37 @@ def log_feedback_event(session_id: str, user_message: str, assistant_reply: str)
         pass
 
 
+# Small char-level model can produce text that *looks* English (right vowel
+# ratio, plausible word lengths) but is actually invented words. Catch that by
+# checking how many tokens are real common words.
+COMMON_ENGLISH_WORDS = {
+    'a', 'an', 'the', 'i', 'you', 'he', 'she', 'it', 'we', 'they', 'me', 'him', 'her', 'us', 'them',
+    'my', 'your', 'his', 'its', 'our', 'their', 'this', 'that', 'these', 'those', 'is', 'am', 'are',
+    'was', 'were', 'be', 'been', 'being', 'do', 'does', 'did', 'have', 'has', 'had', 'will', 'would',
+    'can', 'could', 'should', 'shall', 'may', 'might', 'must', 'not', 'no', 'yes', 'and', 'or', 'but',
+    'so', 'if', 'then', 'than', 'because', 'as', 'of', 'to', 'in', 'on', 'at', 'by', 'for', 'with',
+    'about', 'against', 'between', 'into', 'through', 'during', 'before', 'after', 'above', 'below',
+    'from', 'up', 'down', 'out', 'off', 'over', 'under', 'again', 'further', 'once', 'here', 'there',
+    'when', 'where', 'why', 'how', 'what', 'which', 'who', 'whom', 'all', 'any', 'both', 'each', 'few',
+    'more', 'most', 'other', 'some', 'such', 'only', 'own', 'same', 'just', 'very', 'too', 'really',
+    'good', 'bad', 'great', 'nice', 'sure', 'okay', 'ok', 'well', 'like', 'want', 'need', 'help',
+    'know', 'think', 'get', 'got', 'going', 'go', 'make', 'made', 'take', 'see', 'look', 'say', 'said',
+    'tell', 'told', 'ask', 'day', 'today', 'time', 'thing', 'things', 'way', 'work', 'try', 'use',
+    'feel', 'feeling', 'sorry', 'thanks', 'thank', 'please', 'hello', 'hi', 'hey', 'yes', 'yeah',
+    'love', 'hate', 'happy', 'sad', 'fun', 'funny', 'game', 'games', 'play', 'playing', 'one', 'two',
+    'first', 'last', 'new', 'old', 'still', 'also', 'even', 'much', 'many', 'little', 'lot', 'right',
+    'wrong', 'never', 'always', 'something', 'someone', 'anything', 'everything', 'nothing',
+}
+
+
+def looks_like_real_words(text: str, min_ratio: float = 0.4) -> bool:
+    words = re.findall(r"[a-zA-Z']+", text.lower())
+    if len(words) < 4:
+        return True  # too short to judge reliably
+    recognized = sum(1 for w in words if len(w) <= 2 or w in COMMON_ENGLISH_WORDS)
+    return (recognized / len(words)) >= min_ratio
+
+
 def looks_bad(text: str) -> bool:
     reply = clean_reply(text)
     if len(reply) < 2:
@@ -562,6 +593,8 @@ def looks_bad(text: str) -> bool:
     if any(len(token) >= 14 and re.fullmatch(r"[a-zA-Z]+", token) for token in words):
         return True
     if any(token in reply.lower() for token in ['asisistat', 'llllist', 'feryere']):
+        return True
+    if not looks_like_real_words(reply):
         return True
     return False
 
@@ -606,22 +639,21 @@ def answer_message(user_message: str, history: list[str]) -> str:
         return clean_reply(rule)
 
     best_answer, score = retrieval_reply(user_message, history)
-    # Significantly reduced thresholds to prefer context-aware model generation
-    # Only use retrieval for very high confidence matches
-    if best_answer and score >= 0.85:
+    # The model is a small char-level transformer: it can produce fluent-looking
+    # but meaningless text, while the dataset answers are real, human-written
+    # text. Trust a decent retrieval match over generation.
+    if best_answer and score >= 0.55:
         return clean_reply(best_answer)
 
-    # Generate with context markers (prioritize model over retrieval)
     prompt = build_prompt(history, user_message)
     reply = generate_reply(prompt, max_new_tokens=120, temperature=0.45, top_k=16)
 
     low_quality, _ = is_low_quality_reply(reply)
-    # Use retrieval as fallback only when generation fails badly
-    if (looks_bad(reply) or low_quality) and best_answer and score >= 0.70:
-        return clean_reply(best_answer)
-    if looks_bad(reply) and best_answer and score >= 0.60:
-        return clean_reply(best_answer)
-    if looks_bad(reply):
+    generation_is_bad = looks_bad(reply) or low_quality
+
+    if generation_is_bad:
+        if best_answer and score >= 0.25:
+            return clean_reply(best_answer)
         return assume_high_probability_reply(user_message, best_answer)
     return clean_reply(reply)
 
