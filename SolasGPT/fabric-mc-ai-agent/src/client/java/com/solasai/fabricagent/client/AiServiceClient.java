@@ -13,7 +13,7 @@ import com.google.gson.JsonParser;
 
 public class AiServiceClient {
     private static final String DEFAULT_ENDPOINT = "https://solasai-backend.onrender.com/mc-agent";
-    private static final String LOCAL_FALLBACK_ENDPOINT = "http://127.0.0.1:8787/mc-agent";
+    private static final String LOCAL_FALLBACK_ENDPOINT = "http://127.0.0.1:8797/mc-agent";
     private static volatile String configuredEndpoint = resolveInitialEndpoint();
     private final HttpClient httpClient = HttpClient.newBuilder()
             .connectTimeout(Duration.ofSeconds(5))

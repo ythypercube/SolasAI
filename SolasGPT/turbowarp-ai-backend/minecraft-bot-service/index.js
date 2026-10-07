@@ -104,6 +104,7 @@ const SOLASAI_SPEAK_SCRIPT = process.env.SOLASAI_SPEAK_SCRIPT
 
 const PORT = Number(process.env.BOT_SERVICE_PORT || 8789);
 const DEFAULT_BACKEND_URL = process.env.MC_AGENT_URL || 'https://solasai-backend.onrender.com/mc-agent';
+const CHAT_BACKEND_URL = process.env.CHAT_BACKEND_URL || 'http://127.0.0.1:8797/chat';
 const DEFAULT_BOT_USERNAME = process.env.DEFAULT_BOT_USERNAME || 'SolasAIBot';
 const DEFAULT_BOT_AUTH = process.env.DEFAULT_BOT_AUTH || 'offline';
 
@@ -3762,15 +3763,40 @@ wireBotEvents = function wireBotEvents(bot) {
     if (!username || !message) return;
     if (String(username).toLowerCase() === String(bot.username || '').toLowerCase()) return;
     const msg = String(message || '');
-    if (!msg.includes('[SolasTeam]')) return;
-    // Ignore SolasTeam protocol chatter entirely.
-    return;
-    state.lastTeamSeenAt = Date.now();
-    rememberTeamMessage(`${username}: ${msg}`);
-    const latest = state.teamInbox[state.teamInbox.length - 1];
-    if (latest) {
-      state.lastNote = `team: ${latest.text.slice(0, 80)}`;
+    const lower = msg.toLowerCase();
+
+    // SolasTeam protocol chatter: just record it, don't reply.
+    if (msg.includes('[SolasTeam]')) {
+      state.lastTeamSeenAt = Date.now();
+      rememberTeamMessage(`${username}: ${msg}`);
+      const latest = state.teamInbox[state.teamInbox.length - 1];
+      if (latest) {
+        state.lastNote = `team: ${latest.text.slice(0, 80)}`;
+      }
+      return;
     }
+
+    // Answer questions addressed to the bot, e.g. "SolasAI how do I craft a pickaxe?"
+    if (!lower.includes('solasai')) return;
+    const now = Date.now();
+    if (now - Number(state.lastChatReplyAt || 0) < 4000) return;
+    state.lastChatReplyAt = now;
+
+    let prompt = msg.slice(lower.indexOf('solasai') + 'solasai'.length).trim();
+    prompt = prompt.replace(/^[\s:>,-]+/, '').trim();
+    if (!prompt) prompt = 'hello';
+
+    fetch(CHAT_BACKEND_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ sessionId: `mc-chat-${username}`, message: prompt })
+    })
+      .then((r) => r.json())
+      .then((d) => {
+        const reply = String(d?.reply || '').slice(0, 220);
+        if (reply) bot.chat(reply);
+      })
+      .catch(() => {});
   });
 
   // ===== IMITATION LEARNING =====

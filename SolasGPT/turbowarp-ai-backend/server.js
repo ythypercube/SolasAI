@@ -1477,6 +1477,7 @@ function buildMinecraftAction(objective, state = {}, sessionCtx = {}) {
   const hasBreachMace = s.breachMaceSlot >= 0 && s.maceBreachLevel > 0 && s.maceCount > 0;
   const hasMaceAndElytra = hasMace && s.hasElytra;
   const hasWindCharge = s.windChargeSlot >= 0 && s.windChargeCount > 0;
+  const preferredPvpStyle = pickPreferredPvpStyle(s);
   const hasCrystalCombatKit = s.obsidianSlot >= 0 && s.endCrystalSlot >= 0 && s.obsidianCount > 0 && s.endCrystalCount > 0;
   const hasRangedBow = s.bowSlot >= 0;
   const enemyHasShield = s.nearestEnemyHasShield && enemyNearby;
@@ -1719,7 +1720,6 @@ function buildMinecraftAction(objective, state = {}, sessionCtx = {}) {
     const targetDist = hasPlayerTarget ? s.nearestEnemyDistance : (hasMobTarget ? s.nearestHostileDistance : -1);
     const hasTarget  = targetDist > 0;
     const targetName = hasPlayerTarget ? (s.nearestEnemyName || 'player') : (s.nearestHostile || s.focusedEntity || 'target');
-    const preferredPvpStyle = pickPreferredPvpStyle(s);
     const predictedEnemyOffset = hasPlayerTarget ? getPredictedEnemyOffset(s, targetDist, preferredPvpStyle) : null;
     const targetDx   = hasPlayerTarget ? predictedEnemyOffset.dx : (hasMobTarget ? s.nearestHostileDx   : 0);
     const targetDz   = hasPlayerTarget ? predictedEnemyOffset.dz : (hasMobTarget ? s.nearestHostileDz   : 0);
