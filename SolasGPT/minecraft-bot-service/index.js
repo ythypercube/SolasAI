@@ -108,13 +108,6 @@ const CHAT_BACKEND_URL = process.env.CHAT_BACKEND_URL || 'http://127.0.0.1:8797/
 const DEFAULT_BOT_USERNAME = process.env.DEFAULT_BOT_USERNAME || 'SolasAIBot';
 const DEFAULT_BOT_AUTH = process.env.DEFAULT_BOT_AUTH || 'offline';
 
-const SWARM_FIRST_NAMES = [
-  'Ari', 'Nova', 'Luna', 'Kai', 'Ezra', 'Iris', 'Milo', 'Nora', 'Zane', 'Rhea', 'Theo', 'Juno', 'Axel', 'Lena', 'Orin', 'Mira'
-];
-const SWARM_LAST_NAMES = [
-  'Stone', 'Ridge', 'Vale', 'River', 'Forge', 'Warden', 'Walker', 'Builder', 'Crafter', 'Miner', 'Scout', 'Keeper', 'Farmer', 'Smith', 'Anchor', 'Trail'
-];
-
 const state = {
   bot: null,
   connected: false,
@@ -179,8 +172,6 @@ const state = {
   microPauseUntil: 0,
   strafeLockDir: '',
   strafeLockUntil: 0,
-  swarmRole: 'solo',
-  swarmWorkerId: '',
   teamInbox: [],
   lastTeamBroadcastAt: 0,
   lastTeamSeenAt: 0,
@@ -199,8 +190,6 @@ const state = {
   },
   lastYawDelta: 0,
   lastPitchDelta: 0,
-  lastSwarmPlan: null,
-  swarmWorkers: {},
   baseFindingsByServer: {},
   imitationEnabled: true,
   watchingPlayers: {},
@@ -371,125 +360,6 @@ function sanitizeMcUsername(raw, fallback = 'Solas') {
   return cleaned;
 }
 
-function generateSwarmUsername(mode, baseUsername, index, used = new Set()) {
-  const safeBase = sanitizeMcUsername(baseUsername || 'Solas', 'Solas');
-  let candidate = safeBase;
-
-  if (mode === 'random_mc') {
-    const alpha = 'abcdefghijklmnopqrstuvwxyz';
-    const nums = '0123456789';
-    const len = randomInt(8, 14);
-    let name = '';
-    name += alpha[randomInt(0, alpha.length - 1)].toUpperCase();
-    for (let i = 1; i < len; i++) {
-      const source = Math.random() > 0.72 ? nums : alpha;
-      name += source[randomInt(0, source.length - 1)];
-    }
-    candidate = sanitizeMcUsername(name, `Solas${index + 1}`);
-  } else if (mode === 'random_name') {
-    const first = SWARM_FIRST_NAMES[randomInt(0, SWARM_FIRST_NAMES.length - 1)];
-    const last = SWARM_LAST_NAMES[randomInt(0, SWARM_LAST_NAMES.length - 1)];
-    candidate = sanitizeMcUsername(`${first}${last}`, `Solas${index + 1}`);
-  } else {
-    candidate = sanitizeMcUsername(`${safeBase}${index + 1}`, `Solas${index + 1}`);
-  }
-
-  if (!used.has(candidate)) {
-    used.add(candidate);
-    return candidate;
-  }
-
-  for (let attempt = 2; attempt <= 9999; attempt++) {
-    const tryName = sanitizeMcUsername(`${candidate}${attempt}`, `Solas${index + 1}_${attempt}`);
-    if (!used.has(tryName)) {
-      used.add(tryName);
-      return tryName;
-    }
-  }
-
-  const fallback = sanitizeMcUsername(`Solas${Date.now()}${index}`, `Solas${index + 1}`);
-  used.add(fallback);
-  return fallback;
-}
-
-function splitSwarmJobs(rawJobs) {
-  const input = String(rawJobs || '').trim();
-  if (!input) return ['miner', 'builder', 'farmer', 'treasurer'];
-  const jobs = input
-    .split(',')
-    .map((part) => part.trim())
-    .filter(Boolean)
-    .slice(0, 64);
-  // Remove 'warrior' if present, ensure 'treasurer' is present
-  const filtered = jobs.filter(j => j !== 'warrior');
-  if (!filtered.includes('treasurer')) filtered.push('treasurer');
-  return filtered.length > 0 ? filtered : ['miner', 'builder', 'farmer', 'treasurer'];
-}
-
-function buildSwarmPlan(config = {}) {
-  const count = clamp(Number(config.count || 1), 1, 500);
-  const host = normalizeText(config.host || state.host || '');
-  const port = Number(config.port || state.port || 25565);
-  const auth = normalizeText(config.auth || state.auth || DEFAULT_BOT_AUTH) || 'offline';
-  const objective = normalizeText(config.objective || state.objective || 'general1');
-  const baseUsername = normalizeText(config.baseUsername || 'Solas');
-  const mode = normalizeText(config.usernameMode || 'numbered').toLowerCase();
-  const jobs = splitSwarmJobs(config.jobs);
-  const autoThink = Boolean(config.autoThink ?? true);
-
-  const used = new Set();
-  const bots = [];
-  for (let i = 0; i < count; i++) {
-    const username = generateSwarmUsername(mode, baseUsername, i, used);
-    let role, roleObjective;
-    if (i === 0) {
-      role = 'president';
-      roleObjective = 'Lead the team, coordinate tasks, and make decisions. Assign tasks to others and ensure the civilization thrives. Buy ores from miners and use them to gear up the civilization.';
-    } else {
-      role = jobs[(i - 1) % jobs.length];
-      switch (role) {
-        case 'miner':
-          roleObjective = 'Mine wood, stone, iron, gold, lapis, redstone, diamond, and netherite. Sell ores to the president and resources to builders.';
-          break;
-        case 'builder':
-          roleObjective = 'Build structures for the team: walls, towers, and houses. Use available blocks. Buy resources from miners.';
-          break;
-        case 'farmer':
-          roleObjective = 'Farm crops and breed animals. Ensure food supply for the team. Sell food to all.';
-          break;
-        case 'treasurer':
-          roleObjective = 'Collect rare and elite items (mace, trident, enchanted books, netherite, etc). Explore, loot, and trade for valuables. Act as a wandering trader for rare items.';
-          break;
-        default:
-          roleObjective = `${objective}. Role: ${role}. Think independently, plan short-term tasks yourself, collaborate with nearby bots via chat, share resources, and self-assign useful tasks.`;
-      }
-    }
-    bots.push({
-      id: `bot-${i + 1}`,
-      username,
-      role,
-      objective: roleObjective,
-      host,
-      port,
-      auth,
-      autoThink,
-      chatReadEnabled: true
-    });
-  }
-
-  return {
-    createdAt: Date.now(),
-    host,
-    port,
-    auth,
-    count,
-    mode,
-    autoThink,
-    jobs,
-    bots
-  };
-}
-
 function rememberTeamMessage(message) {
   const text = normalizeText(message);
   if (!text) return;
@@ -502,121 +372,6 @@ function rememberTeamMessage(message) {
 function maybeBroadcastTeamStatus(bot) {
   // Team chat protocol disabled to keep combat behavior and notes clean.
   return;
-}
-
-function listSwarmWorkers() {
-  return Object.values(state.swarmWorkers || {}).sort((a, b) => a.id.localeCompare(b.id));
-}
-
-async function stopSwarmWorkers() {
-  const workers = listSwarmWorkers();
-  if (workers.length === 0) return { stopped: 0 };
-
-  for (const worker of workers) {
-    try {
-      process.kill(worker.pid, 'SIGTERM');
-      worker.status = 'stopping';
-    } catch {
-      worker.status = 'stopped';
-    }
-  }
-
-  await sleep(700);
-
-  for (const worker of workers) {
-    if (worker.status === 'stopped') continue;
-    try {
-      process.kill(worker.pid, 0);
-      process.kill(worker.pid, 'SIGKILL');
-      worker.status = 'stopped';
-    } catch {
-      worker.status = 'stopped';
-    }
-  }
-
-  state.swarmWorkers = {};
-  return { stopped: workers.length };
-}
-
-async function launchSwarmWorkers(plan, options = {}) {
-  const launchCount = clamp(Number(options.launchCount || plan.count || 1), 1, plan.count || 1);
-  const basePort = Number(options.basePort || 8800);
-  const backendUrl = normalizeText(options.backendUrl || state.backendUrl || DEFAULT_BACKEND_URL);
-
-  const startedWorkers = [];
-  const indexPath = path.join(__dirname, 'index.js');
-
-  for (let i = 0; i < launchCount; i++) {
-    const bot = plan.bots[i];
-    const workerPort = basePort + i;
-    const workerId = bot.id || `bot-${i + 1}`;
-    const safeUser = sanitizeMcUsername(bot.username || `Solas${i + 1}`, `Solas${i + 1}`);
-    const sessionId = `swarm-${safeUser}-${Date.now()}-${i}`;
-    const logFile = `/tmp/solasai-swarm-worker-${workerPort}-${safeUser}.log`;
-
-    const outStream = fs.createWriteStream(logFile, { flags: 'a' });
-    const child = spawn(process.execPath, [indexPath], {
-      env: {
-        ...process.env,
-        BOT_SERVICE_PORT: String(workerPort),
-        MC_AGENT_URL: backendUrl,
-        DEFAULT_BOT_USERNAME: safeUser,
-        DEFAULT_BOT_AUTH: String(bot.auth || DEFAULT_BOT_AUTH),
-        SOLASAI_AUTOSTART: '1',
-        SOLASAI_AUTOSTART_HOST: String(bot.host || plan.host || ''),
-        SOLASAI_AUTOSTART_PORT: String(bot.port || plan.port || 25565),
-        SOLASAI_AUTOSTART_USERNAME: safeUser,
-        SOLASAI_AUTOSTART_AUTH: String(bot.auth || DEFAULT_BOT_AUTH),
-        SOLASAI_AUTOSTART_OBJECTIVE: String(bot.objective || plan.objective || state.objective || 'general1'),
-        SOLASAI_AUTOSTART_BACKEND_URL: backendUrl,
-        SOLASAI_AUTOSTART_SESSION_ID: sessionId,
-        SOLASAI_AUTOSTART_ROLE: String(bot.role || 'worker'),
-        SOLASAI_AUTOSTART_WORKER_ID: String(workerId)
-      },
-      stdio: ['ignore', 'pipe', 'pipe']
-    });
-
-    child.stdout?.pipe(outStream);
-    child.stderr?.pipe(outStream);
-
-    const record = {
-      id: workerId,
-      pid: child.pid,
-      port: workerPort,
-      username: safeUser,
-      role: bot.role || 'worker',
-      host: bot.host || plan.host,
-      gamePort: bot.port || plan.port,
-      status: 'starting',
-      startedAt: Date.now(),
-      logFile
-    };
-    state.swarmWorkers[workerId] = record;
-
-    child.on('exit', (code, signal) => {
-      const current = state.swarmWorkers[workerId];
-      if (!current) return;
-      current.status = 'stopped';
-      current.exitCode = code;
-      current.exitSignal = signal;
-      current.stoppedAt = Date.now();
-    });
-
-    startedWorkers.push(record);
-    await sleep(120);
-  }
-
-  await sleep(900);
-  for (const worker of startedWorkers) {
-    try {
-      process.kill(worker.pid, 0);
-      worker.status = 'running';
-    } catch {
-      worker.status = 'failed';
-    }
-  }
-
-  return startedWorkers;
 }
 
 function inKbRecoveryWindow() {
@@ -1587,7 +1342,7 @@ function scanForBasefinderClues(bot) {
 // ===== INTELLIGENT BUILDING SYSTEM =====
 async function learnAndBuildStructure(bot) {
   // Load recent observations of how other players build
-  const observations = loadObservations(state.swarmWorkerId || state.username, 30);
+  const observations = loadObservations(state.username, 30);
   const placeActions = observations.filter(o => o.actionType === 'place');
   
   if (placeActions.length === 0) return false;
@@ -1625,7 +1380,7 @@ async function learnAndBuildStructure(bot) {
             try {
               await bot.equip(matchingItem, 'hand');
               await bot.placeBlock(reference, new Vec3(-1, 0, 0));
-              recordPlayerAction(state.swarmWorkerId || state.username, bot.username, 'place', null, matchingItem);
+              recordPlayerAction(state.username, bot.username, 'place', null, matchingItem);
               state.lastNote = `learning: building with ${blockName} near player`;
               return true;
             } catch {
@@ -4021,7 +3776,7 @@ wireBotEvents = function wireBotEvents(bot) {
       if (dist > 12) continue;
       
       state.lastPlayerObservationAt = now;
-      recordPlayerAction(state.swarmWorkerId || state.username, entity.username, 'break', block, null, now);
+      recordPlayerAction(state.username, entity.username, 'break', block, null, now);
     }
   });
 
@@ -4037,7 +3792,7 @@ wireBotEvents = function wireBotEvents(bot) {
       if (dist > 12) continue;
       
       state.lastPlayerObservationAt = now;
-      recordPlayerAction(state.swarmWorkerId || state.username, entity.username, 'place', newBlock, null, now);
+      recordPlayerAction(state.username, entity.username, 'place', newBlock, null, now);
     }
   });
 };
@@ -4106,8 +3861,7 @@ function createBot(config) {
   state.nextAttackAllowedAt = 0;
   state.lastBaseScanAt = 0;
   state.lastBaseRoamAt = 0;
-  state.swarmRole = normalizeText(config.role || process.env.SOLASAI_AUTOSTART_ROLE || 'solo');
-  state.swarmWorkerId = normalizeText(config.workerId || process.env.SOLASAI_AUTOSTART_WORKER_ID || '');
+  state.teamInbox = [];
   state.teamInbox = [];
   state.lastTeamBroadcastAt = 0;
   state.lastTeamSeenAt = 0;
@@ -4292,94 +4046,6 @@ app.post('/start', async (req, res) => {
   }
 });
 
-app.post('/swarm/start', async (req, res) => {
-  try {
-    const body = req.body && typeof req.body === 'object' ? req.body : {};
-    const plan = buildSwarmPlan(body);
-    if (!plan.host) {
-      return res.status(400).json({ ok: false, error: 'host is required for swarm start' });
-    }
-
-    state.lastSwarmPlan = plan;
-
-    if (plan.count === 1) {
-      if (state.bot) {
-        await stopBot();
-      }
-
-      const single = plan.bots[0];
-      state.objective = normalizeText(single.objective || state.objective || 'general1');
-      state.sessionId = normalizeText(`swarm-${single.username}-${Date.now()}`);
-      state.backendUrl = normalizeText(body.backendUrl || state.backendUrl || DEFAULT_BACKEND_URL);
-
-      createBot({
-        host: single.host,
-        port: single.port,
-        username: single.username,
-        auth: single.auth
-      });
-
-      return res.json({ ok: true, accepted: true, liveStarted: true, count: 1, bot: single, note: 'single bot started immediately' });
-    }
-
-    const shouldLaunchWorkers = body.launch !== false;
-    if (shouldLaunchWorkers) {
-      if (state.bot) {
-        await stopBot();
-      }
-      await stopSwarmWorkers();
-      const started = await launchSwarmWorkers(plan, {
-        launchCount: Number(body.launchCount || plan.count),
-        basePort: Number(body.basePort || 8800),
-        backendUrl: normalizeText(body.backendUrl || state.backendUrl || DEFAULT_BACKEND_URL)
-      });
-      return res.json({
-        ok: true,
-        accepted: true,
-        liveStarted: true,
-        count: plan.count,
-        launched: started.length,
-        workers: started,
-        note: 'swarm workers launched'
-      });
-    }
-
-    return res.json({
-      ok: true,
-      accepted: true,
-      liveStarted: false,
-      count: plan.count,
-      note: 'swarm plan generated. this node runs one live bot instance; use multiple service instances/workers for full 500 concurrent joins.',
-      usernames: plan.bots.map((bot) => bot.username),
-      jobs: plan.jobs
-    });
-  } catch (error) {
-    return res.status(400).json({ ok: false, error: error instanceof Error ? error.message : 'swarm start failed' });
-  }
-});
-
-app.get('/swarm/plan', (req, res) => {
-  res.json({
-    ok: true,
-    hasPlan: Boolean(state.lastSwarmPlan),
-    plan: state.lastSwarmPlan
-  });
-});
-
-app.get('/swarm/status', (req, res) => {
-  const workers = listSwarmWorkers();
-  res.json({
-    ok: true,
-    activeWorkers: workers.filter((w) => w.status === 'running' || w.status === 'starting').length,
-    workers
-  });
-});
-
-app.post('/swarm/stop', async (req, res) => {
-  const result = await stopSwarmWorkers();
-  res.json({ ok: true, ...result });
-});
-
 app.post('/objective', (req, res) => {
   const body = req.body && typeof req.body === 'object' ? req.body : {};
   const objective = normalizeText(body.objective || '');
@@ -4459,130 +4125,6 @@ class RconClient {
     }
   }
 }
-// ===== CIVILIZATIONS LAUNCHER =====
-app.post('/civilizations/launch', async (req, res) => {
-  try {
-    const body = req.body && typeof req.body === 'object' ? req.body : {};
-    const host = normalizeText(body.host || 'solasai.aternos.me');
-    const port = Number(body.port || 25565);
-    const rconHost = normalizeText(body.rconHost || '127.0.0.1');
-    const rconPort = Number(body.rconPort || 25575);
-    const rconPassword = normalizeText(body.rconPassword || 'solasai-bot-pass');
-    const count = Number(body.count || 50);
-    const civsCount = 1;
-    const botsPerCiv = count / civsCount;
-
-    // Civilization coordinates: [x, z]
-    const civCoords = [
-      { x: 0, z: 0, name: 'SolasAI' }
-    ];
-    const civY = 200;
-
-    // Jobs distribution
-    const jobs = ['miner', 'builder', 'warrior', 'farmer'];
-
-    // Unique bot names
-    const uniqueNames = ['Alexios', 'Zephyr', 'Minerva', 'Thorne', 'Cassius', 'Lyra', 'Corvus', 'Selene', 'Orion', 'Iris', 'Hector', 'Astrid', 'Drake', 'Calista', 'Nero', 'Freya', 'Silas', 'Nova', 'Kai', 'Luna', 'Blaze', 'Sage', 'Atlas', 'Echo', 'forge', 'Storm', 'Cipher', 'Raven', 'Ember', 'Vale', 'Onyx', 'Sage2', 'Ace', 'Bolt', 'Crux', 'Dune', 'Flux', 'Grove', 'Haven', 'Ivor', 'Jade', 'Knox', 'Lux', 'Maxx', 'Nexus', 'Orbit', 'Phoenix', 'Quest', 'Ridge', 'Stone', 'Titan'];
-
-    // Create bots configuration
-    const bots = [];
-    for (let i = 0; i < count; i++) {
-      const civIdx = Math.floor(i / botsPerCiv);
-      const civ = civCoords[civIdx];
-      const job = jobs[i % jobs.length];
-      const username = uniqueNames[i % uniqueNames.length];
-      const objective = `You and your team is teleported, your goal is to build the biggest civilisation with your team, and conquer other civilisation. Strongest civilisation wins! Your team: ${civ.name}. Your role: ${job}. Base coordinate: ${civ.x} ${civY} ${civ.z}. Collaborate with nearby team members, share resources, self-assign useful tasks.`;
-
-      bots.push({
-        id: `civ-${civIdx}-bot-${i}`,
-        username,
-        role: job,
-        objective,
-        host,
-        port,
-        auth: 'offline',
-        civIdx,
-        civName: civ.name,
-        civCoord: civ
-      });
-    }
-
-    // Launch bots via swarm
-    const swarmReq = {
-      host,
-      port,
-      count,
-      jobs: jobs.join(','),
-      baseUsername: 'Solas',
-      usernameMode: 'keyed',
-      autoThink: true,
-      launchCount: count,
-      basePort: 8800,
-      launch: true
-    };
-
-    const plan = buildSwarmPlan(swarmReq);
-    state.lastSwarmPlan = plan;
-
-    // Launch workers
-    if (state.bot) {
-      await stopBot();
-    }
-    await stopSwarmWorkers();
-    const started = await launchSwarmWorkers(plan, {
-      launchCount: count,
-      basePort: 8800
-    });
-
-    // Schedule RCON commands to run after bots spawn
-    setTimeout(async () => {
-      try {
-        const rcon = new RconClient(rconHost, rconPort, rconPassword);
-        await rcon.connect();
-
-        // Apply slow falling to all players
-        const slowFallingCmd = 'effect give @a slow_falling 600 1 true';
-        await rcon.command(slowFallingCmd);
-
-        // Teleport bots to their civilization coordinates grouped by color/team
-        for (let civIdx = 0; civIdx < civsCount; civIdx++) {
-          const civ = civCoords[civIdx];
-          const civPlayerNames = [];
-          for (let i = civIdx * botsPerCiv; i < (civIdx + 1) * botsPerCiv; i++) {
-            civPlayerNames.push(`Solas_${civ.name}_${(i % botsPerCiv) + 1}`);
-          }
-
-          // Teleport each bot in the civilization
-          for (const playerName of civPlayerNames) {
-            const teleportCmd = `execute as ${playerName} run tp @s ${civ.x} ${civY} ${civ.z}`;
-            await rcon.command(teleportCmd);
-            await sleep(50);
-          }
-        }
-
-        await rcon.disconnect();
-        console.log('[civilizations] RCON commands executed: slow falling + teleports');
-      } catch (error) {
-        console.error('[civilizations] RCON error:', error?.message || error);
-      }
-    }, 15000); // Wait 15 seconds for bots to spawn
-
-    res.json({
-      ok: true,
-      accepted: true,
-      civilizations: civsCount,
-      totalBots: count,
-      botsPerCiv,
-      launched: started.length,
-      workers: started,
-      coordinates: civCoords,
-      note: '100 bots launching in 4 civilizations with slow falling effect and teleport queued'
-    });
-  } catch (error) {
-    return res.status(400).json({ ok: false, error: error instanceof Error ? error.message : 'civilization launch failed' });
-  }
-});
-
 async function startAutostartBotIfConfigured() {
   if (process.env.SOLASAI_AUTOSTART !== '1') return;
   const host = normalizeText(process.env.SOLASAI_AUTOSTART_HOST || '');
