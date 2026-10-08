@@ -2025,8 +2025,8 @@ public class AiController {
             return false;
         }
         Vec3d enemyLook = enemy.getRotationVec(1.0f);
-        Vec3d toPlayer = player.getPos().add(0, player.getHeight() * 0.6, 0)
-                .subtract(enemy.getPos().add(0, enemy.getHeight() * 0.6, 0));
+        Vec3d toPlayer = player.getEntityPos().add(0, player.getHeight() * 0.6, 0)
+                .subtract(enemy.getEntityPos().add(0, enemy.getHeight() * 0.6, 0));
         if (toPlayer.lengthSquared() < 0.0001) {
             return false;
         }

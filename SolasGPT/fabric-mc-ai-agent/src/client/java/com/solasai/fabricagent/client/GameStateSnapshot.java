@@ -171,8 +171,8 @@ public record GameStateSnapshot(
                     "", -1.0, 0.0, 0.0,
                     // 52-61: resource counts
                     0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-                    // 62-70: enemy info
-                    "", -1.0, 0.0, "", 0, false, false, 0.0, 0.0, 0.0, 0.0,
+                    // 62-72: enemy info (name, dist, health, item, armor, melee, shield, vel x/y/z, dy, dx, dz)
+                    "", -1.0, 0.0, "", 0, false, false, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
                     // 71-74: bed info
                     false, -1.0, 0, "",
                     // 75-77: focused entity, distance, pearl cooldown
